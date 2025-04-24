@@ -1,0 +1,41 @@
+# School Portal Web Project
+
+## Project Overview
+
+A comprehensive web portal for schools to manage teachers and students. The platform allows schools to register, create accounts for teachers and students, and manage user access.
+
+## Features
+
+- School registration with name, code, email, and password
+- School login via email and password
+- Teacher management (add by email, generate passwords)
+- Student management (add by roll number, name, username,generate password)
+- Secure authentication with Firebase
+- Responsive design for all device sizes
+
+## Technology Stack
+
+- Frontend: Next.js, React
+- Authentication: Firebase Authentication
+- Database: Firebase Firestore
+- Mobile App (Future): React Native with Expo
+- State Management: React Context API
+- Styling: Tailwind CSS
+
+## Development Phases
+
+1. Phase 1: School Portal Website
+
+   - School authentication (signup/login)
+   - Dashboard for schools
+   - Teacher and student management
+
+2. Phase 2: Mobile App
+   - Login for teachers and students
+   - Classroom features
+   - Notifications
+   - Integration with web portal
+
+## Current Focus
+
+Building the web portal for schools with complete authentication and user management functionality.

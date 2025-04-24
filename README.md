@@ -1,8 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# School Portal Web
+
+A comprehensive web portal for schools to manage teachers and students. This project provides an interface for school administrators to register their school, add teachers and students, and manage user access.
+
+## Features
+
+- **School Registration**: Schools can sign up with their name, code, email, and password
+- **School Dashboard**: Schools can log in and manage their portal
+- **Teacher Management**: Add teachers via email and generate passwords
+- **Student Management**: Add students with roll numbers, names, usernames, and passwords
+- **Secure Authentication**: Firebase authentication for secure login and user management
+- **Database**: Firestore database for storing school, teacher, and student information
+
+## Tech Stack
+
+- **Frontend**: Next.js, React
+- **Authentication**: Firebase Authentication, NextAuth.js
+- **Database**: Firebase Firestore
+- **Styling**: Tailwind CSS
+- **Form Handling**: React Hook Form
 
 ## Getting Started
 
-First, run the development server:
+First, set up your Firebase project:
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project
+3. Enable Authentication (Email/Password)
+4. Create Firestore Database
+5. Get your Firebase configuration and update the `.env` file
+
+Then, run the development server:
 
 ```bash
 npm run dev
@@ -16,7 +43,22 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Project Structure
+
+```
+school-portal-web/
+├── app/                 # Next.js App Router
+│   ├── api/             # API Routes
+│   ├── auth/            # Authentication Pages
+│   ├── dashboard/       # School Dashboard
+│   ├── components/      # Shared Components
+│   └── ...
+├── lib/                 # Utility functions
+│   ├── firebase.js      # Firebase configuration
+│   └── ...
+├── public/              # Static assets
+└── ...
+```
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
