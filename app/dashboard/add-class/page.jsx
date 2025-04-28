@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Pencil, Plus, Users, X, Save } from "lucide-react"
 import { auth, db } from '../../../lib/firebase'
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 
@@ -12,6 +12,7 @@ export default function ClassesPage() {
   const [showAddStudentsModal, setShowAddStudentsModal] = useState(false)
   const [selectedClass, setSelectedClass] = useState(null)
   const [classes, setClasses] = useState([])
+  const [teachers, setTeachers] = useState([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const router = useRouter()
@@ -21,9 +22,6 @@ export default function ClassesPage() {
     name: '',
     section: '',
     classTeacher: '',
-    totalStudents: '',
-    boys: '',
-    girls: '',
     roomNumber: ''
   })
 
@@ -38,6 +36,7 @@ export default function ClassesPage() {
       if (currentUser) {
         setUser(currentUser)
         fetchClasses(currentUser.uid)
+        fetchTeachers(currentUser.uid)
       } else {
         router.push('/auth/signin')
       }
@@ -63,6 +62,21 @@ export default function ClassesPage() {
     }
   }
 
+  const fetchTeachers = async (schoolId) => {
+    try {
+      const teachersCol = collection(db, 'schools', schoolId, 'teachers')
+      const teachersSnapshot = await getDocs(teachersCol)
+
+      const teachersList = teachersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      setTeachers(teachersList)
+    } catch (err) {
+      console.error('Error fetching teachers:', err)
+    }
+  }
+
   const handleClassFormChange = (e) => {
     const { name, value } = e.target
     setClassFormData(prev => ({
@@ -85,9 +99,9 @@ export default function ClassesPage() {
         name: classFormData.name,
         section: classFormData.section,
         classTeacher: classFormData.classTeacher,
-        totalStudents: parseInt(classFormData.totalStudents) || 0,
-        boys: parseInt(classFormData.boys) || 0,
-        girls: parseInt(classFormData.girls) || 0,
+        totalStudents: 0,
+        boys: 0,
+        girls: 0,
         roomNumber: classFormData.roomNumber,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -98,9 +112,6 @@ export default function ClassesPage() {
         name: '',
         section: '',
         classTeacher: '',
-        totalStudents: '',
-        boys: '',
-        girls: '',
         roomNumber: ''
       })
       setShowAddClassModal(false)
@@ -173,15 +184,61 @@ export default function ClassesPage() {
     try {
       if (!user || !selectedClass) return
 
+      // Check for duplicate roll numbers
+      const rollNumbers = studentFormData.students.map(s => s.rollNo);
+      const uniqueRollNumbers = [...new Set(rollNumbers)];
+
+      if (rollNumbers.length !== uniqueRollNumbers.length) {
+        alert('Error: Each student must have a unique roll number. Please check and try again.');
+        return;
+      }
+
+      // Sort by roll number to ensure sequential validation
+      const sortedStudents = [...studentFormData.students].sort((a, b) => a.rollNo - b.rollNo);
+
+      // Check if roll numbers are sequential
+      for (let i = 0; i < sortedStudents.length - 1; i++) {
+        if (sortedStudents[i + 1].rollNo !== sortedStudents[i].rollNo + 1) {
+          if (!confirm('Warning: Roll numbers are not sequential. Continue anyway?')) {
+            return;
+          }
+          break;
+        }
+      }
+
+      // Check if any roll numbers already exist in this class
+      const existingStudentsRef = collection(db, 'schools', user.uid, 'students');
+      const existingStudentsQuery = query(existingStudentsRef, where('classId', '==', selectedClass.id));
+      const existingStudentsSnapshot = await getDocs(existingStudentsQuery);
+
+      const existingRollNumbers = existingStudentsSnapshot.docs.map(doc => doc.data().rollNo);
+      const conflictingRollNumbers = rollNumbers.filter(roll => existingRollNumbers.includes(roll));
+
+      if (conflictingRollNumbers.length > 0) {
+        if (!confirm(`Roll numbers ${conflictingRollNumbers.join(', ')} already exist in this class. Overwrite existing students?`)) {
+          return;
+        }
+      }
+
       // Add students to Firestore
-      const batch = []
+      const batch = [];
+      let maleCount = 0;
+      let femaleCount = 0;
+
       for (const student of studentFormData.students) {
         if (!student.name) continue // Skip empty names
 
         const password = generatePassword()
         const username = student.username || student.name.toLowerCase().replace(/\s+/g, '.') + student.rollNo
 
-        // Create student document
+        // Count gender for stats
+        if (student.gender === 'male') {
+          maleCount++;
+        } else if (student.gender === 'female') {
+          femaleCount++;
+        }
+
+        // Create student document with classId and className
         batch.push(
           setDoc(doc(db, 'schools', user.uid, 'students', student.rollNo.toString()), {
             name: student.name,
@@ -202,9 +259,9 @@ export default function ClassesPage() {
       await Promise.all(batch)
 
       // Update class student count
-      const totalStudents = parseInt(selectedClass.totalStudents) + studentFormData.students.length
-      const boys = parseInt(selectedClass.boys) + studentFormData.students.filter(s => s.gender === 'male').length
-      const girls = parseInt(selectedClass.girls) + studentFormData.students.filter(s => s.gender === 'female').length
+      const totalStudents = (parseInt(selectedClass.totalStudents) || 0) + studentFormData.students.filter(s => s.name).length;
+      const boys = (parseInt(selectedClass.boys) || 0) + maleCount;
+      const girls = (parseInt(selectedClass.girls) || 0) + femaleCount;
 
       await setDoc(doc(db, 'schools', user.uid, 'classes', selectedClass.id), {
         totalStudents,
@@ -213,7 +270,7 @@ export default function ClassesPage() {
         updatedAt: serverTimestamp()
       }, { merge: true })
 
-      alert(`${studentFormData.students.length} students added successfully!`)
+      alert(`${studentFormData.students.filter(s => s.name).length} students added successfully!`)
       setShowAddStudentsModal(false)
       fetchClasses(user.uid)
     } catch (err) {
@@ -331,58 +388,27 @@ export default function ClassesPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Class Teacher Name <span className="text-red-500">*</span>
+                    Class Teacher <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="classTeacher"
                     value={classFormData.classTeacher}
                     onChange={handleClassFormChange}
                     className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
                     required
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Students
-                    </label>
-                    <input
-                      type="number"
-                      name="totalStudents"
-                      value={classFormData.totalStudents}
-                      onChange={handleClassFormChange}
-                      min="0"
-                      className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Boys
-                    </label>
-                    <input
-                      type="number"
-                      name="boys"
-                      value={classFormData.boys}
-                      onChange={handleClassFormChange}
-                      min="0"
-                      className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Girls
-                    </label>
-                    <input
-                      type="number"
-                      name="girls"
-                      value={classFormData.girls}
-                      onChange={handleClassFormChange}
-                      min="0"
-                      className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
+                  >
+                    <option value="">Select a teacher</option>
+                    {teachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.fullName}>
+                        {teacher.fullName} - {teacher.subject}
+                      </option>
+                    ))}
+                  </select>
+                  {teachers.length === 0 && (
+                    <p className="mt-1 text-xs text-red-500">
+                      No teachers available. Please add teachers first.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -411,6 +437,7 @@ export default function ClassesPage() {
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                  disabled={teachers.length === 0}
                 >
                   <Save className="h-4 w-4 mr-2 inline" />
                   Save Class
@@ -543,6 +570,48 @@ export default function ClassesPage() {
 }
 
 function ClassCard({ classData, onAddStudents, onDelete }) {
+  const [showViewStudentsModal, setShowViewStudentsModal] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
+
+      console.log('Fetching students for class:', classData.id);
+
+      // Get all students where classId matches
+      const studentsRef = collection(db, 'schools', user.uid, 'students');
+      const studentsQuery = query(studentsRef, where('classId', '==', classData.id));
+      const studentsSnapshot = await getDocs(studentsQuery);
+
+      console.log('Students found:', studentsSnapshot.size);
+
+      // Process results and convert to array
+      const studentsData = studentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Sort by roll number
+      studentsData.sort((a, b) => Number(a.rollNo) - Number(b.rollNo));
+
+      console.log('Processed student data:', studentsData);
+      setStudents(studentsData);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching students:', err);
+      setLoading(false);
+    }
+  };
+
+  const handleViewStudents = async () => {
+    setShowViewStudentsModal(true);
+    await fetchStudents();
+  };
+
   return (
     <div className="rounded-lg border bg-white p-6">
       <div className="flex items-start justify-between">
@@ -581,7 +650,10 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-2">
-        <button className="flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-50">
+        <button
+          className="flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-50"
+          onClick={handleViewStudents}
+        >
           <Users className="mr-1 h-3 w-3" />
           View Students
         </button>
@@ -593,6 +665,71 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
           Add Students
         </button>
       </div>
+
+      {/* View Students Modal */}
+      {showViewStudentsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Students in {classData.name} {classData.section}</h3>
+              <button
+                onClick={() => setShowViewStudentsModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : students.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {students.map((student) => (
+                      <tr key={student.id}>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{student.rollNo}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{student.name}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{student.username}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm capitalize">{student.gender}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <div className="flex items-center">
+                            <span className="font-mono">{student.password}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                No students found in this class. Add students to see them here.
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowViewStudentsModal(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
