@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }) {
     { name: 'Home', href: '/dashboard', icon: '🏠' },
     { name: 'Add Class Details', href: '/dashboard/add-class', icon: '📚' },
     { name: 'Add Teachers', href: '/dashboard/add-teachers', icon: '👨‍🏫' },
-    { name: 'Add Students', href: '/dashboard/add-students', icon: '👨‍🎓' },
+    
     { name: 'Timetable', href: '/dashboard/timetable', icon: '📅' },
     { name: 'Attendance', href: '/dashboard/attendance', icon: '✓' },
     { name: 'Marks Details', href: '/dashboard/marks-details', icon: '📊' },
