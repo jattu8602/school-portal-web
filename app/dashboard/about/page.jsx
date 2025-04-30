@@ -1,17 +1,74 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, FileText, Video, HelpCircle } from "lucide-react"
+import { MessageCircle, FileText, Video, HelpCircle, Github, Linkedin, Instagram, Twitter } from "lucide-react"
+import TeamCard from "./components/TeamCard.jsx"
+import AboutSection from "./components/AboutSection.jsx"
+import FeaturesSection from "./components/FeaturesSection.jsx"
+import SupportSection from "./components/SupportSection.jsx"
+import FaqSection from "./components/FaqSection.jsx"
 
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("about")
 
+  const teamMembers = [
+    {
+      name: "Lokendra Patel",
+      role: "Founder & CEO",
+      image: "/team/lokendra.jpg",
+      social: {
+        github: "https://github.com/lokendrapatel",
+        twitter: "https://twitter.com/lokendrapatel",
+        linkedin: "https://linkedin.com/in/lokendrapatel",
+        instagram: "https://instagram.com/lokendrapatel"
+      }
+    },
+    {
+      name: "Ramanand Kumar Gupta",
+      role: "Full Stack Web Developer",
+      image: "/team/ramanand.jpg",
+      social: {
+        github: "https://github.com/ramanandgupta",
+        twitter: "https://twitter.com/ramanandgupta",
+        linkedin: "https://linkedin.com/in/ramanandgupta",
+        instagram: "https://instagram.com/ramanandgupta"
+      }
+    },
+    {
+      name: "Nitesh Chourasiya",
+      role: "Tester & Web Developer",
+      image: "/team/nitesh.jpg",
+      social: {
+        github: "https://github.com/niteshchourasiya",
+        twitter: "https://twitter.com/niteshchourasiya",
+        linkedin: "https://linkedin.com/in/niteshchourasiya",
+        instagram: "https://instagram.com/niteshchourasiya"
+      }
+    },
+    {
+      name: "Ashutosh Tripathi",
+      role: "Advertising Head",
+      image: "/team/ashutosh.jpg",
+      social: {
+        linkedin: "https://linkedin.com/in/ashutoshtripathi"
+      }
+    },
+    {
+      name: "Anit Bajpai",
+      role: "Content Management Head & Advertising Coordinator",
+      image: "/team/anit.jpg",
+      social: {
+        twitter: "https://twitter.com/anitbajpai"
+      }
+    }
+  ]
+
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-50">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">About School Portal</h1>
-          <p className="text-sm text-gray-500">Learn more about our platform and get help</p>
+          <h1 className="text-2xl font-semibold">About Present Sir</h1>
+          <p className="text-sm text-gray-500">Learn more about our platform and the team behind it</p>
         </div>
         <button className="flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium">
           <MessageCircle className="mr-2 h-4 w-4" />
@@ -19,9 +76,9 @@ export default function AboutPage() {
         </button>
       </div>
 
-      <div className="mt-6 flex space-x-2 border-b">
+      <div className="mt-6 flex space-x-2 border-b bg-white rounded-t-lg px-4">
         <button
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-3 text-sm font-medium ${
             activeTab === "about" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
           }`}
           onClick={() => setActiveTab("about")}
@@ -29,7 +86,15 @@ export default function AboutPage() {
           About
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-3 text-sm font-medium ${
+            activeTab === "team" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
+          }`}
+          onClick={() => setActiveTab("team")}
+        >
+          Our Team
+        </button>
+        <button
+          className={`px-4 py-3 text-sm font-medium ${
             activeTab === "features" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
           }`}
           onClick={() => setActiveTab("features")}
@@ -37,7 +102,7 @@ export default function AboutPage() {
           Features
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-3 text-sm font-medium ${
             activeTab === "support" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
           }`}
           onClick={() => setActiveTab("support")}
@@ -45,7 +110,7 @@ export default function AboutPage() {
           Support
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-3 text-sm font-medium ${
             activeTab === "faq" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
           }`}
           onClick={() => setActiveTab("faq")}
@@ -54,259 +119,27 @@ export default function AboutPage() {
         </button>
       </div>
 
-      {activeTab === "about" && (
-        <div className="mt-6 rounded-lg border bg-white p-6">
-          <h2 className="text-xl font-semibold">Welcome to School Portal</h2>
-          <p className="text-sm text-gray-500">The ultimate school management solution</p>
+      {activeTab === "about" && <AboutSection />}
 
-          <div className="mt-6">
-            <h3 className="text-lg font-medium">Our Story</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              School Portal was founded with a simple mission: to transform the way educational institutions manage
-              their day-to-day operations. We wanted to create a comprehensive yet easy-to-use platform that would free
-              educators from administrative burdens, allowing them to focus on what matters most - teaching and
-              learning.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-gray-600">
-              Today, School Portal is serving hundreds of schools across the country, helping school administrators, teachers,
-              and parents collaborate seamlessly to provide the best educational experience for students.
-            </p>
-          </div>
+      {activeTab === "team" && (
+        <div className="mt-0 rounded-b-lg border-x border-b bg-[#0f1219] p-8 text-white">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-10">
+              The Talented People Behind the Scenes of the Organization
+            </h2>
 
-          <div className="mt-8 grid grid-cols-1 gap-6 rounded-lg bg-gray-50 p-6 md:grid-cols-3">
-            <div className="text-center">
-              <h3 className="text-3xl font-bold">500+</h3>
-              <p className="text-sm text-gray-500">Schools using our platform</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+              {teamMembers.map((member, index) => (
+                <TeamCard key={index} member={member} />
+              ))}
             </div>
-            <div className="text-center">
-              <h3 className="text-3xl font-bold">50,000+</h3>
-              <p className="text-sm text-gray-500">Students managed</p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-3xl font-bold">5,000+</h3>
-              <p className="text-sm text-gray-500">Teachers empowered</p>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <h3 className="text-lg font-medium">Our Mission</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">
-              At School Portal, we believe that every educational institution deserves access to powerful, intuitive
-              management tools. Our mission is to streamline administrative processes, enhance communication between
-              stakeholders, and provide valuable insights through data analytics, ultimately contributing to better
-              educational outcomes for students.
-            </p>
           </div>
         </div>
       )}
 
-      {activeTab === "features" && (
-        <div className="mt-6 rounded-lg border bg-white p-6">
-          <h2 className="text-xl font-semibold">Platform Features</h2>
-          <p className="text-sm text-gray-500">Discover all the powerful tools School Portal offers</p>
-
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <FeatureCard
-              title="Class Management"
-              features={[
-                "Organize students by class and section",
-                "Assign teachers to specific classes",
-                "Track class-wise performance metrics",
-                "Manage student records efficiently",
-              ]}
-            />
-            <FeatureCard
-              title="Attendance Tracking"
-              features={[
-                "Mark daily attendance with ease",
-                "Generate detailed attendance reports",
-                "Track attendance patterns over time",
-                "Notify parents of absences",
-              ]}
-            />
-            <FeatureCard
-              title="Timetable Management"
-              features={[
-                "Create class-specific timetables",
-                "Assign subjects and teachers to periods",
-                "Handle special schedules and events",
-                "View teacher workload distribution",
-              ]}
-            />
-            <FeatureCard
-              title="Examination & Grading"
-              features={[
-                "Record and manage student marks",
-                "Generate report cards and transcripts",
-                "Analyze performance with visual charts",
-                "Track subject-wise progress",
-              ]}
-            />
-            <FeatureCard
-              title="Fee Management"
-              features={[
-                "Generate fee schedules & invoices",
-                "Track payments and dues",
-                "Support multiple payment methods",
-                "Generate financial reports",
-              ]}
-            />
-            <FeatureCard
-              title="Communication Tools"
-              features={[
-                "Send announcements and notices",
-                "Parent-teacher messaging system",
-                "Event calendar and reminders",
-                "Email and SMS notifications",
-              ]}
-            />
-          </div>
-        </div>
-      )}
-
-      {activeTab === "support" && (
-        <div className="mt-6 rounded-lg border bg-white p-6">
-          <h2 className="text-xl font-semibold">Support Resources</h2>
-          <p className="text-sm text-gray-500">Get help and learn how to use School Portal effectively</p>
-
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-lg border p-6">
-              <div className="flex items-start">
-                <div className="mr-4 rounded-lg bg-gray-100 p-3">
-                  <FileText className="h-6 w-6 text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Documentation</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Comprehensive guides and tutorials to help you make the most of School Portal
-                  </p>
-                  <button className="mt-4 w-full rounded-lg border border-gray-300 py-2 text-sm font-medium">
-                    View Documentation
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-6">
-              <div className="flex items-start">
-                <div className="mr-4 rounded-lg bg-gray-100 p-3">
-                  <Video className="h-6 w-6 text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Video Tutorials</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Step-by-step video guides covering all features of the platform
-                  </p>
-                  <button className="mt-4 w-full rounded-lg border border-gray-300 py-2 text-sm font-medium">
-                    Watch Tutorials
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-6">
-              <div className="flex items-start">
-                <div className="mr-4 rounded-lg bg-gray-100 p-3">
-                  <HelpCircle className="h-6 w-6 text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Knowledge Base</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Find answers to common questions and troubleshooting guides
-                  </p>
-                  <button className="mt-4 w-full rounded-lg border border-gray-300 py-2 text-sm font-medium">
-                    Browse Knowledge Base
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border p-6">
-              <div className="flex items-start">
-                <div className="mr-4 rounded-lg bg-gray-100 p-3">
-                  <MessageCircle className="h-6 w-6 text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Customer Support</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Contact our dedicated support team for personalized assistance
-                  </p>
-                  <button className="mt-4 w-full rounded-lg bg-gray-900 py-2 text-sm font-medium text-white">
-                    Contact Support
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <h3 className="text-lg font-medium">Support Hours</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Our support team is available Monday through Friday, 9:00 AM to 6:00 PM.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "faq" && (
-        <div className="mt-6 rounded-lg border bg-white p-6">
-          <h2 className="text-xl font-semibold">Frequently Asked Questions</h2>
-          <p className="text-sm text-gray-500">Find answers to common questions about School Portal</p>
-
-          <div className="mt-6 space-y-4">
-            <FaqItem
-              question="How do I add a new class to my school?"
-              answer="To add a new class, navigate to the Classes section from the sidebar, then click on the 'Add Class' button in the top right corner. Fill in the required details such as class name, section, and assign a class teacher."
-            />
-            <FaqItem
-              question="Can I export attendance reports?"
-              answer="Yes, you can export attendance reports in various formats including PDF and Excel. Navigate to the Attendance section, select the class and date range, then click on the 'Export' button."
-            />
-            <FaqItem
-              question="How do I set up fee schedules for different classes?"
-              answer="To set up fee schedules, go to the Manage Fees section, click on 'Create Fee Structure', select the class, and add the fee components with their respective amounts and due dates."
-            />
-            <FaqItem
-              question="Can parents access the system?"
-              answer="Yes, parents can access a dedicated parent portal where they can view their child's attendance, academic performance, fee details, and communicate with teachers."
-            />
-            <FaqItem
-              question="Is my data secure on School Portal?"
-              answer="Absolutely. We implement industry-standard security measures including data encryption, regular backups, and strict access controls to ensure your school's data remains secure and private."
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function FeatureCard({ title, features }) {
-  return (
-    <div className="rounded-lg border p-6">
-      <h3 className="text-lg font-medium">{title}</h3>
-      <ul className="mt-4 space-y-2">
-        {features.map((feature, index) => (
-          <li key={index} className="flex items-start">
-            <div className="mr-2 mt-1 h-4 w-4 rounded-full text-green-500">✓</div>
-            <span className="text-sm text-gray-600">{feature}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function FaqItem({ question, answer }) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  return (
-    <div className="rounded-lg border">
-      <button className="flex w-full items-center justify-between p-4 text-left" onClick={() => setIsOpen(!isOpen)}>
-        <h3 className="text-sm font-medium">{question}</h3>
-        <span className="text-gray-500">{isOpen ? "−" : "+"}</span>
-      </button>
-      {isOpen && <div className="border-t p-4 text-sm text-gray-600">{answer}</div>}
+      {activeTab === "features" && <FeaturesSection />}
+      {activeTab === "support" && <SupportSection />}
+      {activeTab === "faq" && <FaqSection />}
     </div>
   )
 }

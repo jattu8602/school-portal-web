@@ -10,6 +10,7 @@
     "generate-secret": "node scripts/generate-secret.js"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.2.0",
     "firebase": "^11.6.0",
     "firebase-admin": "^13.3.0",
     "lucide-react": "^0.503.0",

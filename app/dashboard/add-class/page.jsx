@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { Pencil, Plus, Users, X, Save } from "lucide-react"
 import { auth, db } from '../../../lib/firebase'
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where, getDoc } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
+import { useToast } from '../../context/ToastContext'
 
 export default function ClassesPage() {
   const [showAddClassModal, setShowAddClassModal] = useState(false)
@@ -16,6 +17,7 @@ export default function ClassesPage() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const router = useRouter()
+  const { showToast } = useToast()
 
   // Form state for adding a class
   const [classFormData, setClassFormData] = useState({
@@ -59,6 +61,7 @@ export default function ClassesPage() {
       setClasses(classesData)
     } catch (err) {
       console.error('Error fetching classes:', err)
+      showToast('Failed to fetch classes', 'error')
     }
   }
 
@@ -74,6 +77,7 @@ export default function ClassesPage() {
       setTeachers(teachersList)
     } catch (err) {
       console.error('Error fetching teachers:', err)
+      showToast('Failed to fetch teachers', 'error')
     }
   }
 
@@ -116,9 +120,10 @@ export default function ClassesPage() {
       })
       setShowAddClassModal(false)
       fetchClasses(user.uid)
+      showToast(`Class ${classFormData.name} ${classFormData.section} added successfully`, 'success')
     } catch (err) {
       console.error('Error adding class:', err)
-      alert('Failed to add class: ' + err.message)
+      showToast(`Failed to add class: ${err.message}`, 'error')
     }
   }
 
@@ -189,7 +194,7 @@ export default function ClassesPage() {
       const uniqueRollNumbers = [...new Set(rollNumbers)];
 
       if (rollNumbers.length !== uniqueRollNumbers.length) {
-        alert('Error: Each student must have a unique roll number. Please check and try again.');
+        showToast('Each student must have a unique roll number', 'error');
         return;
       }
 
@@ -221,7 +226,7 @@ export default function ClassesPage() {
       }
 
       // Add students to Firestore
-      const batch = [];
+      let successCount = 0;
       let maleCount = 0;
       let femaleCount = 0;
 
@@ -238,9 +243,9 @@ export default function ClassesPage() {
           femaleCount++;
         }
 
-        // Create student document with classId and className
-        batch.push(
-          setDoc(doc(db, 'schools', user.uid, 'students', student.rollNo.toString()), {
+        try {
+          // Create student document with classId and className
+          await setDoc(doc(db, 'schools', user.uid, 'students', student.rollNo.toString()), {
             name: student.name,
             rollNo: student.rollNo,
             username: username,
@@ -249,45 +254,70 @@ export default function ClassesPage() {
             classId: selectedClass.id,
             className: selectedClass.name,
             section: selectedClass.section,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          })
-        )
+            createdAt: serverTimestamp()
+          });
+          successCount++;
+        } catch (err) {
+          console.error(`Error adding student ${student.name}:`, err);
+          showToast(`Failed to add student ${student.name}: ${err.message}`, 'error');
+        }
       }
 
-      // Execute all operations
-      await Promise.all(batch)
+      // Update class stats
+      try {
+        const classRef = doc(db, 'schools', user.uid, 'classes', selectedClass.id);
+        const classDoc = await getDoc(classRef);
 
-      // Update class student count
-      const totalStudents = (parseInt(selectedClass.totalStudents) || 0) + studentFormData.students.filter(s => s.name).length;
-      const boys = (parseInt(selectedClass.boys) || 0) + maleCount;
-      const girls = (parseInt(selectedClass.girls) || 0) + femaleCount;
+        if (classDoc.exists()) {
+          const classData = classDoc.data();
+          await setDoc(classRef, {
+            ...classData,
+            totalStudents: (classData.totalStudents || 0) + successCount,
+            boys: (classData.boys || 0) + maleCount,
+            girls: (classData.girls || 0) + femaleCount,
+            updatedAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error('Error updating class stats:', err);
+        showToast('Failed to update class statistics', 'warning');
+      }
 
-      await setDoc(doc(db, 'schools', user.uid, 'classes', selectedClass.id), {
-        totalStudents,
-        boys,
-        girls,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
-
-      alert(`${studentFormData.students.filter(s => s.name).length} students added successfully!`)
-      setShowAddStudentsModal(false)
-      fetchClasses(user.uid)
+      // Close modal and refresh data
+      setShowAddStudentsModal(false);
+      fetchClasses(user.uid);
+      showToast(`Added ${successCount} students to ${selectedClass.name} ${selectedClass.section}`, 'success');
     } catch (err) {
-      console.error('Error adding students:', err)
-      alert('Failed to add students: ' + err.message)
+      console.error('Error adding students:', err);
+      showToast(`Failed to add students: ${err.message}`, 'error');
     }
   }
 
   const deleteClass = async (classId) => {
-    if (!confirm('Are you sure you want to delete this class? This will not delete the associated students.')) return
+    if (!confirm('Are you sure you want to delete this class? This will also remove all students associated with this class.')) return;
 
     try {
-      await deleteDoc(doc(db, 'schools', user.uid, 'classes', classId))
-      fetchClasses(user.uid)
+      // Delete the class
+      await deleteDoc(doc(db, 'schools', user.uid, 'classes', classId));
+
+      // Find and delete students in this class
+      const studentsRef = collection(db, 'schools', user.uid, 'students');
+      const studentsQuery = query(studentsRef, where('classId', '==', classId));
+      const studentsSnapshot = await getDocs(studentsQuery);
+
+      // Delete each student
+      const deletePromises = studentsSnapshot.docs.map(doc =>
+        deleteDoc(doc.ref)
+      );
+
+      await Promise.all(deletePromises);
+
+      // Refresh classes
+      fetchClasses(user.uid);
+      showToast('Class deleted successfully', 'success');
     } catch (err) {
-      console.error('Error deleting class:', err)
-      alert('Failed to delete class: ' + err.message)
+      console.error('Error deleting class:', err);
+      showToast(`Failed to delete class: ${err.message}`, 'error');
     }
   }
 
@@ -571,8 +601,16 @@ export default function ClassesPage() {
 
 function ClassCard({ classData, onAddStudents, onDelete }) {
   const [showViewStudentsModal, setShowViewStudentsModal] = useState(false);
+  const [showViewTeachersModal, setShowViewTeachersModal] = useState(false);
+  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [allTeachers, setAllTeachers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [teacherFormData, setTeacherFormData] = useState({
+    teacherId: '',
+    subjectName: ''
+  });
 
   const fetchStudents = async () => {
     try {
@@ -607,9 +645,194 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
     }
   };
 
+  const fetchTeachers = async () => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // First, get all teachers from the school
+      const allTeachersRef = collection(db, 'schools', user.uid, 'teachers');
+      const allTeachersSnapshot = await getDocs(allTeachersRef);
+      const allTeachersData = allTeachersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setAllTeachers(allTeachersData);
+
+      // Filter teachers who teach in this class
+      const teachersForClass = allTeachersData.filter(teacher => {
+        // Check if this teacher has subjects for this class
+        if (teacher.subjects) {
+          return teacher.subjects.some(subject => subject.classId === classData.id);
+        }
+        return false;
+      });
+
+      // Get subject information for each teacher
+      const teachersWithSubjects = teachersForClass.map(teacher => {
+        const classSubject = teacher.subjects.find(s => s.classId === classData.id);
+        return {
+          ...teacher,
+          subjectName: classSubject ? classSubject.subjectName : '',
+          isClassTeacher: teacher.fullName === classData.classTeacher
+        };
+      });
+
+      // Sort: class teacher first, then alphabetically by name
+      teachersWithSubjects.sort((a, b) => {
+        if (a.isClassTeacher && !b.isClassTeacher) return -1;
+        if (!a.isClassTeacher && b.isClassTeacher) return 1;
+        return a.fullName.localeCompare(b.fullName);
+      });
+
+      setTeachers(teachersWithSubjects);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
+      setLoading(false);
+    }
+  };
+
   const handleViewStudents = async () => {
     setShowViewStudentsModal(true);
     await fetchStudents();
+  };
+
+  const handleViewTeachers = async () => {
+    setShowViewTeachersModal(true);
+    await fetchTeachers();
+  };
+
+  const handleAddTeacher = () => {
+    setShowAddTeacherModal(true);
+    fetchTeachers(); // This will update allTeachers list
+  };
+
+  const handleTeacherFormChange = (e) => {
+    const { name, value } = e.target;
+    setTeacherFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmitTeacher = async (e) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Validate form
+      if (!teacherFormData.teacherId || !teacherFormData.subjectName.trim()) {
+        alert('Please select a teacher and enter a subject name');
+        setLoading(false);
+        return;
+      }
+
+      // Find the selected teacher
+      const selectedTeacher = allTeachers.find(t => t.id === teacherFormData.teacherId);
+      if (!selectedTeacher) {
+        alert('Selected teacher not found');
+        setLoading(false);
+        return;
+      }
+
+      // Check if teacher already teaches in this class
+      const existingSubject = selectedTeacher.subjects?.find(s => s.classId === classData.id);
+
+      // Prepare the updated subjects array
+      let updatedSubjects = selectedTeacher.subjects || [];
+
+      if (existingSubject) {
+        // Update existing subject
+        updatedSubjects = updatedSubjects.map(s =>
+          s.classId === classData.id
+            ? { ...s, subjectName: teacherFormData.subjectName }
+            : s
+        );
+      } else {
+        // Add new subject
+        updatedSubjects.push({
+          classId: classData.id,
+          className: `${classData.name} ${classData.section}`,
+          subjectName: teacherFormData.subjectName
+        });
+      }
+
+      // Update the classSubjects map
+      const classSubjects = {};
+      updatedSubjects.forEach(subject => {
+        classSubjects[subject.classId] = subject.subjectName;
+      });
+
+      // Update teacher in Firestore
+      await setDoc(doc(db, 'schools', user.uid, 'teachers', selectedTeacher.id), {
+        subjects: updatedSubjects,
+        classSubjects: classSubjects,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      // Reset form and close modal
+      setTeacherFormData({
+        teacherId: '',
+        subjectName: ''
+      });
+      setShowAddTeacherModal(false);
+
+      // Refresh teachers list
+      await fetchTeachers();
+      setLoading(false);
+    } catch (err) {
+      console.error('Error adding teacher to class:', err);
+      alert('Failed to add teacher to class: ' + err.message);
+      setLoading(false);
+    }
+  };
+
+  const removeTeacherFromClass = async (teacherId) => {
+    try {
+      if (!confirm('Are you sure you want to remove this teacher from the class?')) return;
+
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Find the teacher
+      const teacherRef = doc(db, 'schools', user.uid, 'teachers', teacherId);
+      const teacherDoc = await getDoc(teacherRef);
+
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+        const updatedSubjects = (teacherData.subjects || []).filter(
+          subject => subject.classId !== classData.id
+        );
+
+        // Update the classSubjects map
+        const classSubjects = {};
+        updatedSubjects.forEach(subject => {
+          classSubjects[subject.classId] = subject.subjectName;
+        });
+
+        // Update teacher in Firestore
+        await setDoc(teacherRef, {
+          subjects: updatedSubjects,
+          classSubjects: classSubjects,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // Refresh teachers list
+        await fetchTeachers();
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error('Error removing teacher from class:', err);
+      alert('Failed to remove teacher from class: ' + err.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -663,6 +886,16 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
         >
           <Plus className="mr-1 h-3 w-3" />
           Add Students
+        </button>
+      </div>
+
+      <div className="mt-2">
+        <button
+          className="w-full flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-50"
+          onClick={handleViewTeachers}
+        >
+          <Users className="mr-1 h-3 w-3" />
+          View Teachers
         </button>
       </div>
 
@@ -727,6 +960,180 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Teachers Modal */}
+      {showViewTeachersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Teachers for {classData.name} {classData.section}</h3>
+              <button
+                onClick={() => setShowViewTeachersModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <button
+                onClick={handleAddTeacher}
+                className="flex items-center justify-center rounded-lg border border-primary-500 bg-primary-50 text-primary-700 px-4 py-2 text-sm font-medium hover:bg-primary-100"
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add Teacher to Class
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : teachers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {teachers.map((teacher) => (
+                      <tr key={teacher.id} className={teacher.isClassTeacher ? "bg-green-50" : ""}>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{teacher.fullName}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{teacher.subjectName}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          {teacher.isClassTeacher ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Class Teacher
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Subject Teacher
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">{teacher.email}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                          {!teacher.isClassTeacher && (
+                            <button
+                              onClick={() => removeTeacherFromClass(teacher.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Remove from class"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                No teachers found for this class. Add teachers to see them here.
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowViewTeachersModal(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Teacher to Class Modal */}
+      {showAddTeacherModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add Teacher to {classData.name} {classData.section}</h3>
+              <button
+                onClick={() => setShowAddTeacherModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitTeacher}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Teacher <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="teacherId"
+                    value={teacherFormData.teacherId}
+                    onChange={handleTeacherFormChange}
+                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select a teacher</option>
+                    {allTeachers.map((teacher) => (
+                      <option
+                        key={teacher.id}
+                        value={teacher.id}
+                        disabled={teacher.fullName === classData.classTeacher} // Disable if already class teacher
+                      >
+                        {teacher.fullName} - {teacher.subject}
+                        {teacher.fullName === classData.classTeacher ? ' (Class Teacher)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subject Taught in This Class <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="subjectName"
+                    value={teacherFormData.subjectName}
+                    onChange={handleTeacherFormChange}
+                    placeholder="e.g. Mathematics, Biology, etc."
+                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTeacherModal(false)}
+                  className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2 inline" />
+                  )}
+                  Add Teacher
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

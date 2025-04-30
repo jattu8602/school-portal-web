@@ -23,7 +23,15 @@ export default function TeachersPage() {
     phone: '',
     subject: '',
     qualification: '',
-    gender: 'male'
+    gender: 'male',
+    subjects: [] // Array to store multiple subjects for different classes
+  })
+
+  // Add state for classes and selected class/subject
+  const [classes, setClasses] = useState([])
+  const [selectedClassSubject, setSelectedClassSubject] = useState({
+    classId: '',
+    subjectName: ''
   })
 
   useEffect(() => {
@@ -39,6 +47,12 @@ export default function TeachersPage() {
 
     return () => unsubscribe()
   }, [router])
+
+  useEffect(() => {
+    if (user) {
+      fetchClasses(user.uid)
+    }
+  }, [user])
 
   const fetchTeachers = async (schoolId) => {
     try {
@@ -56,11 +70,91 @@ export default function TeachersPage() {
     }
   }
 
+  const fetchClasses = async (schoolId) => {
+    try {
+      const classesCol = collection(db, 'schools', schoolId, 'classes')
+      const classesQuery = query(classesCol, orderBy('name'))
+      const classesSnapshot = await getDocs(classesQuery)
+
+      const classesData = classesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setClasses(classesData)
+    } catch (err) {
+      console.error('Error fetching classes:', err)
+    }
+  }
+
   const handleTeacherFormChange = (e) => {
     const { name, value } = e.target
     setTeacherFormData(prev => ({
       ...prev,
       [name]: value
+    }))
+  }
+
+  const handleSubjectClassChange = (e) => {
+    const { name, value } = e.target
+    setSelectedClassSubject(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const addSubjectToList = () => {
+    // Validate inputs
+    if (!selectedClassSubject.classId || !selectedClassSubject.subjectName.trim()) {
+      alert('Please select both class and subject')
+      return
+    }
+
+    // Find class details
+    const classDetails = classes.find(c => c.id === selectedClassSubject.classId)
+    if (!classDetails) return
+
+    // Check if this class already has a subject for this teacher
+    const existingSubjectIndex = teacherFormData.subjects.findIndex(
+      s => s.classId === selectedClassSubject.classId
+    )
+
+    if (existingSubjectIndex >= 0) {
+      // Update existing entry
+      const updatedSubjects = [...teacherFormData.subjects]
+      updatedSubjects[existingSubjectIndex] = {
+        ...selectedClassSubject,
+        className: `${classDetails.name} ${classDetails.section}`
+      }
+
+      setTeacherFormData(prev => ({
+        ...prev,
+        subjects: updatedSubjects
+      }))
+    } else {
+      // Add new entry
+      setTeacherFormData(prev => ({
+        ...prev,
+        subjects: [
+          ...prev.subjects,
+          {
+            ...selectedClassSubject,
+            className: `${classDetails.name} ${classDetails.section}`
+          }
+        ]
+      }))
+    }
+
+    // Reset the input fields
+    setSelectedClassSubject({
+      classId: '',
+      subjectName: ''
+    })
+  }
+
+  const removeSubjectFromList = (index) => {
+    setTeacherFormData(prev => ({
+      ...prev,
+      subjects: prev.subjects.filter((_, i) => i !== index)
     }))
   }
 
@@ -95,6 +189,12 @@ export default function TeachersPage() {
       // Check if the teacher already exists
       const teacherRef = doc(db, 'schools', user.uid, 'teachers', teacherId)
 
+      // Create a map of classId to subject for easy querying
+      const classSubjects = {}
+      teacherFormData.subjects.forEach(subject => {
+        classSubjects[subject.classId] = subject.subjectName
+      })
+
       // Save teacher to Firestore
       await setDoc(teacherRef, {
         fullName: teacherFormData.fullName,
@@ -104,6 +204,8 @@ export default function TeachersPage() {
         qualification: teacherFormData.qualification,
         gender: teacherFormData.gender,
         password: password,
+        subjects: teacherFormData.subjects,
+        classSubjects: classSubjects, // Map for quicker lookups
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -115,7 +217,8 @@ export default function TeachersPage() {
         phone: '',
         subject: '',
         qualification: '',
-        gender: 'male'
+        gender: 'male',
+        subjects: []
       })
       setShowAddTeacherModal(false)
       fetchTeachers(user.uid)
@@ -133,7 +236,8 @@ export default function TeachersPage() {
       phone: teacher.phone || '',
       subject: teacher.subject || '',
       qualification: teacher.qualification || '',
-      gender: teacher.gender || 'male'
+      gender: teacher.gender || 'male',
+      subjects: teacher.subjects || []
     })
     setShowEditTeacherModal(true)
   }
@@ -150,6 +254,12 @@ export default function TeachersPage() {
         return
       }
 
+      // Create a map of classId to subject for easy querying
+      const classSubjects = {}
+      teacherFormData.subjects.forEach(subject => {
+        classSubjects[subject.classId] = subject.subjectName
+      })
+
       // Update teacher in Firestore
       await setDoc(doc(db, 'schools', user.uid, 'teachers', selectedTeacher.id), {
         fullName: teacherFormData.fullName,
@@ -158,6 +268,8 @@ export default function TeachersPage() {
         subject: teacherFormData.subject,
         qualification: teacherFormData.qualification,
         gender: teacherFormData.gender,
+        subjects: teacherFormData.subjects,
+        classSubjects: classSubjects, // Map for quicker lookups
         updatedAt: serverTimestamp()
       }, { merge: true })
 
@@ -168,7 +280,8 @@ export default function TeachersPage() {
         phone: '',
         subject: '',
         qualification: '',
-        gender: 'male'
+        gender: 'male',
+        subjects: []
       })
       setShowEditTeacherModal(false)
       setSelectedTeacher(null)
@@ -237,8 +350,8 @@ export default function TeachersPage() {
 
       {/* Add Teacher Modal */}
       {showAddTeacherModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
+          <div className="bg-white rounded-lg w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add New Teacher</h3>
               <button
@@ -304,7 +417,7 @@ export default function TeachersPage() {
                     name="subject"
                     value={teacherFormData.subject}
                     onChange={handleTeacherFormChange}
-                    placeholder="Enter subject taught"
+                    placeholder="Enter primary subject taught"
                     className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
                     required
                   />
@@ -340,6 +453,87 @@ export default function TeachersPage() {
                     <option value="other">Other</option>
                   </select>
                 </div>
+
+                {/* Class-Subject Mapping Section */}
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium text-gray-800 mb-3">Subjects Taught in Classes</h4>
+
+                  {/* Add subject-class mapping */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Class
+                      </label>
+                      <select
+                        name="classId"
+                        value={selectedClassSubject.classId}
+                        onChange={handleSubjectClassChange}
+                        className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">Select a class</option>
+                        {classes.map((classItem) => (
+                          <option key={classItem.id} value={classItem.id}>
+                            {classItem.name} {classItem.section}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Subject Taught
+                      </label>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          name="subjectName"
+                          value={selectedClassSubject.subjectName}
+                          onChange={handleSubjectClassChange}
+                          placeholder="Subject for this class"
+                          className="flex-1 px-3 py-2 border rounded-l-md focus:ring-primary-500 focus:border-primary-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={addSubjectToList}
+                          className="bg-primary-600 text-white px-3 py-2 rounded-r-md hover:bg-primary-700"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Display added subject-class mappings */}
+                  {teacherFormData.subjects.length > 0 && (
+                    <div className="mt-3 border rounded-md overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                            <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {teacherFormData.subjects.map((subject, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 text-sm">{subject.className}</td>
+                              <td className="px-4 py-2 text-sm">{subject.subjectName}</td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeSubjectFromList(index)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end space-x-3">
@@ -365,8 +559,8 @@ export default function TeachersPage() {
 
       {/* Edit Teacher Modal */}
       {showEditTeacherModal && selectedTeacher && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
+          <div className="bg-white rounded-lg w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Edit Teacher</h3>
               <button
@@ -432,7 +626,7 @@ export default function TeachersPage() {
                     name="subject"
                     value={teacherFormData.subject}
                     onChange={handleTeacherFormChange}
-                    placeholder="Enter subject taught"
+                    placeholder="Enter primary subject taught"
                     className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
                     required
                   />
@@ -468,6 +662,87 @@ export default function TeachersPage() {
                     <option value="other">Other</option>
                   </select>
                 </div>
+
+                {/* Class-Subject Mapping Section */}
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium text-gray-800 mb-3">Subjects Taught in Classes</h4>
+
+                  {/* Add subject-class mapping */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Class
+                      </label>
+                      <select
+                        name="classId"
+                        value={selectedClassSubject.classId}
+                        onChange={handleSubjectClassChange}
+                        className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">Select a class</option>
+                        {classes.map((classItem) => (
+                          <option key={classItem.id} value={classItem.id}>
+                            {classItem.name} {classItem.section}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Subject Taught
+                      </label>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          name="subjectName"
+                          value={selectedClassSubject.subjectName}
+                          onChange={handleSubjectClassChange}
+                          placeholder="Subject for this class"
+                          className="flex-1 px-3 py-2 border rounded-l-md focus:ring-primary-500 focus:border-primary-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={addSubjectToList}
+                          className="bg-primary-600 text-white px-3 py-2 rounded-r-md hover:bg-primary-700"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Display added subject-class mappings */}
+                  {teacherFormData.subjects.length > 0 && (
+                    <div className="mt-3 border rounded-md overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                            <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {teacherFormData.subjects.map((subject, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 text-sm">{subject.className}</td>
+                              <td className="px-4 py-2 text-sm">{subject.subjectName}</td>
+                              <td className="px-4 py-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => removeSubjectFromList(index)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end space-x-3">
@@ -495,6 +770,8 @@ export default function TeachersPage() {
 }
 
 function TeacherCard({ teacher, onEdit, onDelete }) {
+  const [showSubjects, setShowSubjects] = useState(false);
+
   return (
     <div className="rounded-lg border bg-white p-6">
       <div className="flex items-start justify-between">
@@ -516,13 +793,46 @@ function TeacherCard({ teacher, onEdit, onDelete }) {
           </button>
         </div>
       </div>
-      <p className="mt-2 text-sm text-gray-500">Subject: {teacher.subject}</p>
+      <p className="mt-2 text-sm text-gray-500">Primary Subject: {teacher.subject}</p>
       <p className="mt-1 text-sm text-gray-500">Email: {teacher.email}</p>
       {teacher.phone && (
         <p className="mt-1 text-sm text-gray-500">Phone: {teacher.phone}</p>
       )}
       {teacher.qualification && (
         <p className="mt-1 text-sm text-gray-500">Qualification: {teacher.qualification}</p>
+      )}
+
+      {/* Subjects taught in different classes */}
+      {teacher.subjects && teacher.subjects.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowSubjects(!showSubjects)}
+            className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            {showSubjects ? 'Hide' : 'Show'} {teacher.subjects.length} assigned classes
+          </button>
+
+          {showSubjects && (
+            <div className="mt-2 border rounded p-2 bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="py-1 px-2 text-left text-xs font-medium text-gray-500">Class</th>
+                    <th scope="col" className="py-1 px-2 text-left text-xs font-medium text-gray-500">Subject</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {teacher.subjects.map((subject, index) => (
+                    <tr key={index}>
+                      <td className="py-1 px-2 text-xs">{subject.className}</td>
+                      <td className="py-1 px-2 text-xs">{subject.subjectName}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="mt-4 pt-4 border-t">
