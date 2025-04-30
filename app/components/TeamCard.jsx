@@ -5,7 +5,7 @@ export default function TeamCard({ member }) {
     <div className="flex flex-col items-center">
       <div className="w-32 h-32 rounded-full overflow-hidden mb-4 border-4 border-teal-400 relative">
         <img
-          src={member.image}
+          src={member.photo}
           alt={member.name}
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -16,48 +16,48 @@ export default function TeamCard({ member }) {
       </div>
 
       <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-      <p className="text-gray-400 text-sm mb-4">{member.role}</p>
+      <p className="text-gray-500 text-sm mb-4">{member.tag}</p>
 
       <div className="flex space-x-2">
-        {member.social.github && (
+        {member.links.github && (
           <a
-            href={member.social.github}
+            href={member.links.github}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700"
+            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white"
           >
             <Github size={16} />
           </a>
         )}
 
-        {member.social.twitter && (
+        {member.links.twitter && (
           <a
-            href={member.social.twitter}
+            href={member.links.twitter}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700"
+            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white"
           >
             <Twitter size={16} />
           </a>
         )}
 
-        {member.social.linkedin && (
+        {member.links.linkedin && (
           <a
-            href={member.social.linkedin}
+            href={member.links.linkedin}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700"
+            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white"
           >
             <Linkedin size={16} />
           </a>
         )}
 
-        {member.social.instagram && (
+        {member.links.instagram && (
           <a
-            href={member.social.instagram}
+            href={member.links.instagram}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700"
+            className="p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white"
           >
             <Instagram size={16} />
           </a>

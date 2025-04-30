@@ -1,3 +1,5 @@
+import TeamSection from "../TeamSection";
+
 export default function AboutSection() {
   return (
     <div className="mt-0 rounded-b-lg border-x border-b bg-white p-6">
@@ -97,6 +99,15 @@ export default function AboutSection() {
           </div>
         </div>
       </div>
+
+
+          {/* Team Section
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Our Team
+            </h2>
+            <TeamSection />
+          </section> */}
     </div>
   )
 }

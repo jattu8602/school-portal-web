@@ -2,67 +2,13 @@
 
 import { useState } from "react"
 import { MessageCircle, FileText, Video, HelpCircle, Github, Linkedin, Instagram, Twitter } from "lucide-react"
-import TeamCard from "./components/TeamCard.jsx"
-import AboutSection from "./components/AboutSection.jsx"
-import FeaturesSection from "./components/FeaturesSection.jsx"
-import SupportSection from "./components/SupportSection.jsx"
-import FaqSection from "./components/FaqSection.jsx"
+import AboutSection from "../../components/about/AboutSection.jsx"
+import FeaturesSection from "../../components/about/FeaturesSection.jsx"
+import SupportSection from "../../components/about/SupportSection.jsx"
+import FaqSection from "../../components/about/FaqSection.jsx"
 
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("about")
-
-  const teamMembers = [
-    {
-      name: "Lokendra Patel",
-      role: "Founder & CEO",
-      image: "/team/lokendra.jpg",
-      social: {
-        github: "https://github.com/lokendrapatel",
-        twitter: "https://twitter.com/lokendrapatel",
-        linkedin: "https://linkedin.com/in/lokendrapatel",
-        instagram: "https://instagram.com/lokendrapatel"
-      }
-    },
-    {
-      name: "Ramanand Kumar Gupta",
-      role: "Full Stack Web Developer",
-      image: "/team/ramanand.jpg",
-      social: {
-        github: "https://github.com/ramanandgupta",
-        twitter: "https://twitter.com/ramanandgupta",
-        linkedin: "https://linkedin.com/in/ramanandgupta",
-        instagram: "https://instagram.com/ramanandgupta"
-      }
-    },
-    {
-      name: "Nitesh Chourasiya",
-      role: "Tester & Web Developer",
-      image: "/team/nitesh.jpg",
-      social: {
-        github: "https://github.com/niteshchourasiya",
-        twitter: "https://twitter.com/niteshchourasiya",
-        linkedin: "https://linkedin.com/in/niteshchourasiya",
-        instagram: "https://instagram.com/niteshchourasiya"
-      }
-    },
-    {
-      name: "Ashutosh Tripathi",
-      role: "Advertising Head",
-      image: "/team/ashutosh.jpg",
-      social: {
-        linkedin: "https://linkedin.com/in/ashutoshtripathi"
-      }
-    },
-    {
-      name: "Anit Bajpai",
-      role: "Content Management Head & Advertising Coordinator",
-      image: "/team/anit.jpg",
-      social: {
-        twitter: "https://twitter.com/anitbajpai"
-      }
-    }
-  ]
-
   return (
     <div className="p-6 bg-gray-50">
       <div className="flex items-center justify-between">
@@ -85,14 +31,7 @@ export default function AboutPage() {
         >
           About
         </button>
-        <button
-          className={`px-4 py-3 text-sm font-medium ${
-            activeTab === "team" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("team")}
-        >
-          Our Team
-        </button>
+       
         <button
           className={`px-4 py-3 text-sm font-medium ${
             activeTab === "features" ? "border-b-2 border-gray-900" : "text-gray-500 hover:text-gray-700"

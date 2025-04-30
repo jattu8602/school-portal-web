@@ -9,6 +9,7 @@ import TeacherManagement from '../components/dashboard/TeacherManagement'
 import StudentManagement from '../components/dashboard/StudentManagement'
 import FirebaseStatus from '../components/debug/FirebaseStatus'
 import TestFirebase from '../components/debug/TestFirebase'
+import TeamSection from '../components/TeamSection'
 
 export default function DashboardHome() {
   const [user, setUser] = useState(null)
@@ -236,6 +237,14 @@ export default function DashboardHome() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Team Section */}
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Our Team
+            </h2>
+            <TeamSection />
           </section>
         </div>
       </main>
