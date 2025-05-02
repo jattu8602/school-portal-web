@@ -3,9 +3,79 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { auth } from '../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import IdCardShowcase from './components/IdCardShowcase'
+import MobileAppShowcase from './components/MobileAppShowcase'
+import HeroImage from './components/HeroImage'
 
 export default function LandingPage() {
   const [user, setUser] = useState(null)
+
+  const testimonials = [
+    {
+      quote:
+        "PresentSir has completely transformed how we track attendance. The offline device is a game-changer for our school where mobile phones are restricted.",
+      author: "Dr. Rajesh Sharma",
+      position: "Principal, Delhi Public School",
+      image: "https://img.freepik.com/premium-photo/man-wearing-glasses-blue-shirt-with-shirt-that-says-hes-wearing-glasses_1314467-61643.jpg?semt=ais_hybrid&w=740",
+    },
+    {
+      quote:
+        "The seamless sync between the device and our school management system has saved our teachers countless hours. Highly recommended!",
+      author: "Priya Mehta",
+      position: "Vice Principal, St. Mary's Academy",
+      image: "https://imgs.search.brave.com/iUNC4Tz0w-g7rry_qqJedSZlba1LYV6NQWo2a4zt6Rk/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly9wcmV2/aWV3LnJlZGQuaXQv/aXMtdGhpcy1hLWdv/b2QtcHJvZmVzc2lv/bmFsLXByb2ZpbGUt/cGljLXYwLXFyaDdi/a3VwOHZ1ZTEucG5n/P3dpZHRoPTY0MCZj/cm9wPXNtYXJ0JmF1/dG89d2VicCZzPWYx/NDcyYmQxYTE4Yjdj/NzEyYzY0ZGNhMmYz/ODFjOGUwMDZmMjY5/NGM",
+    },
+    {
+      quote:
+        "Parents love the real-time attendance updates. Our teachers find the device intuitive and easy to use even without technical knowledge.",
+      author: "Amit Patel",
+      position: "IT Administrator, Modern School",
+      image: "https://imgs.search.brave.com/bqrckQVWCvA0tiLj7LCG12Op1tSpGsxlSXQf-8QyaBM/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/ZnJlZXBpay5jb20v/cHJlbWl1bS1waG90/by9wb3J0cmFpdC1i/YW5nbGFkZXNoaS1t/YW5fNTM4NzYtMzkx/NzguanBnP3NlbXQ9/YWlzX2h5YnJpZCZ3/PTc0MA",
+    },
+    {
+      quote:
+        "The analytics provided by PresentSir have helped us identify attendance patterns and improve student engagement across all grades.",
+      author: "Sunita Verma",
+      position: "Academic Coordinator, Greenfield International",
+      image: "https://imgs.search.brave.com/DPPCp8E1pZXOioXkdJyLYr3QKH_WrjvgClvuuw6LPfs/rs:fit:500:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5pc3RvY2twaG90/by5jb20vaWQvMTE2/NTQyNDQyMC9waG90/by9wcm9maWxlLXZp/ZXctb2YtYmVhdXRp/ZnVsLWJ1c2luZXNz/d29tYW4tYWdhaW5z/dC13aGl0ZS1iYWNr/Z3JvdW5kLmpwZz9z/PTYxMng2MTImdz0w/Jms9MjAmYz1MMzRw/RDJFMEN3ZnFZT3o5/N2NwcHI4X2l5cUNy/Nm5lT3RydnZhOVlh/QmdNPQ",
+    },
+  ]
+
+  const faqs = [
+    {
+      question: "How does the offline attendance device work?",
+      answer:
+        "The PresentSir device works completely offline. Teachers select their class, then mark attendance using the device's intuitive interface. Later, when convenient, they can connect the device to their mobile phone via Bluetooth and sync the attendance data to the school's management system.",
+    },
+    {
+      question: "Do teachers and students need to pay for the app?",
+      answer:
+        "No. Only schools need to subscribe to PresentSir. The subscription includes access for all teachers and students. They can download the app for free and log in using credentials provided by their school.",
+    },
+    {
+      question: "How secure is the attendance data?",
+      answer:
+        "Very secure. All data is encrypted both on the device and during transmission. The school admin panel has role-based access controls, and we comply with all relevant data protection regulations.",
+    },
+    {
+      question: "Can the system handle multiple classes and subjects?",
+      answer:
+        "PresentSir is designed to handle complex school structures with multiple grades, sections, subjects, and teachers. The system can be customized to match your school's specific organizational structure.",
+    },
+    {
+      question: "What happens if the device runs out of battery?",
+      answer:
+        "The PresentSir device has a long-lasting battery that can work for up to a week on a single charge. It also stores all attendance data locally, so no information is lost even if the battery runs out. Simply recharge and continue.",
+    },
+    {
+      question: "Can parents access the attendance information?",
+      answer:
+        "Yes, schools can enable parent access through a separate parent portal or app. Parents can view their child's attendance, performance, and receive notifications about absences or important announcements.",
+    },
+  ]
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -55,42 +125,42 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Transform Your School Management
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Streamline attendance, manage classes, track performance, and more
-            with our comprehensive school management system.
-          </p>
-          <div className="flex justify-center space-x-4">
-            {user ? (
-              <Link
-                href="/dashboard"
-                className="px-8 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-lg font-medium"
-              >
-                Go to Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/auth/signup"
-                  className="px-8 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-lg font-medium"
-                >
-                  Get Started
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-6 text-primary">Transform Your School Management</h1>
+            <p className="text-xl mb-8 text-muted-foreground">
+              Streamline attendance, manage classes, track performance, and more with our comprehensive school
+              management system that works offline.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              {user ? (
+                <Link href="/dashboard">
+                  <Button size="lg" className="text-lg w-full sm:w-auto">
+                    Go to Dashboard
+                  </Button>
                 </Link>
-                <Link
-                  href="/about"
-                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-lg font-medium"
-                >
-                  Learn More
-                </Link>
-              </>
-            )}
+              ) : (
+                <>
+                  <Link href="/auth/signup">
+                    <Button size="lg" className="text-lg w-full sm:w-auto">
+                      Get Started
+                    </Button>
+                  </Link>
+                  <Link href="/about">
+                    <Button size="lg" variant="outline" className="text-lg w-full sm:w-auto">
+                      Learn More
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <HeroImage />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Features Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -117,6 +187,114 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile App Showcase */}
+        <section className="bg-muted py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4">Mobile Applications</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Powerful apps for teachers and students to manage all aspects of school life
+              </p>
+            </div>
+
+            <MobileAppShowcase />
+          </div>
+        </section>
+
+
+      {/* ID Card Showcase */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">Digital ID Cards</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Modern, secure digital identification for teachers and students
+            </p>
+          </div>
+
+          <IdCardShowcase />
+        </section>
+
+
+
+      {/* Testimonials Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">What Schools Say</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Trusted by educational institutions across the country
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index} className="overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col h-full">
+                    <div className="mb-6">
+                      <p className="text-lg italic">"{testimonial.quote}"</p>
+                    </div>
+                    <div className="mt-auto flex items-center">
+                      <div className="w-12 h-12 rounded-full overflow-hidden mr-4">
+                        <img
+                          src={testimonial.image || "/placeholder.svg"}
+                          alt={testimonial.author}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{testimonial.author}</h4>
+                        <p className="text-sm text-muted-foreground">{testimonial.position}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="bg-muted py-20">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Everything you need to know about PresentSir
+              </p>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left font-medium">{faq.question}</AccordionTrigger>
+                  <AccordionContent>{faq.answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     </div>
   )
 }
