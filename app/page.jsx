@@ -1,6 +1,19 @@
+'use client'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { auth } from '../lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
 
 export default function LandingPage() {
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser)
+    })
+    return () => unsubscribe()
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-100">
       {/* Navigation */}
@@ -13,18 +26,29 @@ export default function LandingPage() {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link
-                href="/auth/signin"
-                className="px-4 py-2 text-gray-600 hover:text-gray-900"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-              >
-                Register School
-              </Link>
+              {user ? (
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/signin"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                  >
+                    Register School
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -41,18 +65,29 @@ export default function LandingPage() {
             with our comprehensive school management system.
           </p>
           <div className="flex justify-center space-x-4">
-            <Link
-              href="/auth/signup"
-              className="px-8 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-lg font-medium"
-            >
-              Get Started
-            </Link>
-            <Link
-              href="/about"
-              className="px-8 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-lg font-medium"
-            >
-              Learn More
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="px-8 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-lg font-medium"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth/signup"
+                  className="px-8 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-lg font-medium"
+                >
+                  Get Started
+                </Link>
+                <Link
+                  href="/about"
+                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-lg font-medium"
+                >
+                  Learn More
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
