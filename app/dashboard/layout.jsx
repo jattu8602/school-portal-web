@@ -174,6 +174,11 @@ export default function DashboardLayout({ children }) {
               </div>
             </div>
 
+
+
+
+            
+
             {/* Right section with theme toggle, notifications and profile */}
             <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
