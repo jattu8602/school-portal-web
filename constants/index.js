@@ -1,7 +1,19 @@
 export const teamMembers = [
+
+  {
+    name: "Ajay Singh Thakur",
+    tag: "Founder & Data Analyst",
+    photo: "team/Ajay_Singh_Thakur.jpg",
+    links: {
+      github: "https://github.com/Ajayysinghh03",
+      instagram: "https://instagram.com/jatin_insta",
+      linkedin: "https://www.linkedin.com/in/ajayysinghh",
+      twitter: "https://twitter.com/iAJAYY42"
+    }
+  },
   {
     name: "Nitesh Chaurasiya",
-    tag: "Full Stack Developerr",
+    tag: "Full Stack Developer",
     photo: "team/Nitesh_Chaurasiya.jpg", // Replace with actual URL or import local image
     links: {
       github: "https://github.com/jattu8602",
@@ -22,19 +34,8 @@ export const teamMembers = [
     }
   },
   {
-    name: "Ajay Singh Thakur",
-    tag: "Data Analyst",
-    photo: "team/Ajay_Singh_Thakur.jpg",
-    links: {
-      github: "https://github.com/Ajayysinghh03",
-      instagram: "https://instagram.com/jatin_insta",
-      linkedin: "https://www.linkedin.com/in/ajayysinghh",
-      twitter: "https://twitter.com/iAJAYY42"
-    }
-  },
-  {
     name: "Taniya Patel",
-    tag: "3d modeler & Designer",
+    tag: "3D Designer",
     photo: "team/Taniya_Patel.jpg",
     links: {
       github: "https://github.com/taniyaapatel",
