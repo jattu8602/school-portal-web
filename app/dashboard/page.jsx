@@ -88,7 +88,7 @@ export default function DashboardHome() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
+      {/* <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">School Dashboard</h1>
           <div className="flex items-center space-x-4">
@@ -111,7 +111,7 @@ export default function DashboardHome() {
             </button>
           </div>
         </div>
-      </header>
+      </header> */}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {showDebug && (
@@ -122,7 +122,7 @@ export default function DashboardHome() {
         )}
 
 
-        <div className="mt-8">
+        <div className="">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">
             Dashboard Overview
           </h1>

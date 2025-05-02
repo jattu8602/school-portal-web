@@ -8,7 +8,7 @@ import { auth, db } from '../../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { ToastProvider } from '../../app/context/ToastContext'
 import { Bell, Menu, X, User, ChevronDown, Sun, Moon } from 'lucide-react'
-import { getDoc, doc } from 'firebase/firestore'
+import { getDoc, doc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null)
@@ -18,13 +18,14 @@ export default function DashboardLayout({ children }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
   const router = useRouter()
   const pathname = usePathname()
 
   // Check system dark mode preference
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const prefersDark = window.matchMedia('(prefers-color-scheme: light)').matches
       setDarkMode(prefersDark)
 
       // Listen for changes in dark mode preference
@@ -55,13 +56,19 @@ export default function DashboardLayout({ children }) {
     return () => unsubscribe()
   }, [router])
 
-  // Fetch school information
+  // Fetch school information and notifications
   const fetchSchoolInfo = async (schoolId) => {
     try {
       const schoolDoc = await getDoc(doc(db, 'schools', schoolId))
       if (schoolDoc.exists()) {
         setSchoolInfo(schoolDoc.data())
       }
+
+      // Fetch notifications
+      const notificationsRef = collection(db, 'schools', schoolId, 'notifications')
+      const q = query(notificationsRef, where('status', '==', 'unread'))
+      const snapshot = await getDocs(q)
+      setUnreadNotifications(snapshot.size)
     } catch (error) {
       console.error('Error fetching school info:', error)
     }
@@ -121,6 +128,11 @@ export default function DashboardLayout({ children }) {
     { id: 3, title: 'Fee payment received', time: 'Yesterday' },
   ]
 
+  const handleNotificationClick = () => {
+    setNotificationsOpen(false)
+    router.push('/dashboard/notification')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -165,24 +177,26 @@ export default function DashboardLayout({ children }) {
             {/* Right section with theme toggle, notifications and profile */}
             <div className="flex items-center space-x-4">
               {/* Theme Toggle */}
-              <button
+              {/* <button
                 className={`text-gray-500 hover:text-gray-700 p-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 onClick={toggleDarkMode}
                 aria-label="Toggle theme"
               >
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
+              </button> */}
 
               {/* Notifications */}
               <div className="relative" id="notifications-dropdown">
                 <button
                   className="text-gray-500 hover:text-gray-700 relative"
-                  onClick={() => setNotificationsOpen(!notificationsOpen)}
+                  onClick={handleNotificationClick}
                 >
                   <Bell size={20} />
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
-                    {notifications.length}
-                  </span>
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
+                      {unreadNotifications}
+                    </span>
+                  )}
                 </button>
 
                 {/* Notifications dropdown */}
@@ -195,7 +209,17 @@ export default function DashboardLayout({ children }) {
                       {notifications.length > 0 ? (
                         <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
                           {notifications.map(notification => (
-                            <div key={notification.id} className={`px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
+                            <div
+                              key={notification.id}
+                              className={`px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} cursor-pointer`}
+                              onClick={() => {
+                                // Mark notification as read
+                                const notificationRef = doc(db, 'schools', user.uid, 'notifications', notification.id)
+                                updateDoc(notificationRef, { status: 'read' })
+                                setUnreadNotifications(prev => prev - 1)
+                                setNotificationsOpen(false)
+                              }}
+                            >
                               <p className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.title}</p>
                               <p className="text-xs text-gray-500">{notification.time}</p>
                             </div>
@@ -208,7 +232,7 @@ export default function DashboardLayout({ children }) {
                       )}
                     </div>
                     <div className={`py-2 px-4 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-100'} border-t text-center`}>
-                      <Link href="/dashboard/notifications" className="text-xs text-blue-600 hover:text-blue-800">
+                      <Link href="/dashboard/notification" className="text-xs text-blue-600 hover:text-blue-800">
                         View all notifications
                       </Link>
                     </div>
