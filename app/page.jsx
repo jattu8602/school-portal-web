@@ -13,6 +13,7 @@ import MobileAppShowcase from './components/MobileAppShowcase'
 import HeroImage from './components/HeroImage'
 import DeviceSpecifications from './components/DeviceSpecifications'
 import TeamSection from './components/TeamSection'
+import InstallPWA from './components/InstallPWA'
 
 export default function LandingPage() {
   const [user, setUser] = useState(null)
@@ -122,6 +123,7 @@ export default function LandingPage() {
                   >
                     Register School
                   </Link>
+                  <InstallPWA />
                 </>
               )}
             </div>
