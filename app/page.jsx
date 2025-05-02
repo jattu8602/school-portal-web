@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react'
 import { auth } from '../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { Button } from '@/components/ui/button'
+import { CheckCircle, Users, BarChart3, Calendar, Bell, MessageSquare, School, Smartphone, Zap } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from '@/components/ui/card';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import IdCardShowcase from './components/IdCardShowcase'
 import MobileAppShowcase from './components/MobileAppShowcase'
 import HeroImage from './components/HeroImage'
+import DeviceSpecifications from './components/DeviceSpecifications'
 
 export default function LandingPage() {
   const [user, setUser] = useState(null)
+  const [activeTab, setActiveTab] = useState("schools")
 
   const testimonials = [
     {
@@ -188,6 +192,62 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* How It Works Section */}
+        <section className="bg-muted py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4">How PresentSir Works</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Our innovative solution combines hardware and software to make attendance tracking seamless
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="bg-card rounded-lg p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Smartphone className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">Take Attendance Offline</h3>
+                <p className="text-muted-foreground">
+                  Teachers use our device to mark attendance without needing internet or mobile phones
+                </p>
+              </div>
+
+              <div className="bg-card rounded-lg p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Zap className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">Sync When Convenient</h3>
+                <p className="text-muted-foreground">
+                  Connect the device to a mobile phone via Bluetooth at any time to sync the attendance data
+                </p>
+              </div>
+
+              <div className="bg-card rounded-lg p-8 text-center shadow-sm">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <School className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-4">Auto-Update to School Panel</h3>
+                <p className="text-muted-foreground">
+                  Data automatically updates to the school's panel and respective applications
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Device Specifications */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">The PresentSir Device</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Compact, durable, and designed specifically for classroom attendance
+            </p>
+          </div>
+
+          <DeviceSpecifications />
+        </section>
+
       {/* Mobile App Showcase */}
         <section className="bg-muted py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -199,6 +259,154 @@ export default function LandingPage() {
             </div>
 
             <MobileAppShowcase />
+          </div>
+      </section>
+
+      {/* Features Section */}
+        <section className="bg-muted py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold mb-4">Comprehensive Features</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                PresentSir offers tailored solutions for schools, teachers, and students
+              </p>
+            </div>
+
+            <Tabs defaultValue="schools" className="w-full">
+              <div className="flex justify-center mb-8">
+                <TabsList className="grid w-full max-w-md grid-cols-3">
+                  <TabsTrigger value="schools" onClick={() => setActiveTab("schools")}>
+                    Schools
+                  </TabsTrigger>
+                  <TabsTrigger value="teachers" onClick={() => setActiveTab("teachers")}>
+                    Teachers
+                  </TabsTrigger>
+                  <TabsTrigger value="students" onClick={() => setActiveTab("students")}>
+                    Students
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="schools" className={activeTab === "schools" ? "block" : "hidden"}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <Users className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Class Management</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Easily manage classes, students, and teachers in one place with our intuitive admin panel.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <BarChart3 className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Performance Analytics</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Monitor and analyze student performance with detailed insights and reports.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <Bell className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Notifications</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Send announcements and updates to teachers and students in real-time.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="teachers" className={activeTab === "teachers" ? "block" : "hidden"}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <CheckCircle className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Attendance Tracking</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Take attendance offline with our device and sync it later with your mobile phone.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <Calendar className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Homework Management</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Assign and track homework, assignments, and projects for your classes.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <MessageSquare className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Communication</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Chat with students and parents, share updates, and collaborate effectively.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="students" className={activeTab === "students" ? "block" : "hidden"}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <CheckCircle className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Attendance Records</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        View your attendance history and get notified about absences or late arrivals.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <BarChart3 className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Results & Performance</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Access your academic results, performance metrics, and improvement suggestions.
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center mb-4">
+                        <Bell className="h-6 w-6 text-primary mr-2" />
+                        <h3 className="text-xl font-semibold">Notifications</h3>
+                      </div>
+                      <p className="text-muted-foreground">
+                        Receive real-time notifications about homework, events, and important announcements.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </section>
 
