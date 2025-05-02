@@ -26,7 +26,7 @@ export const teamMembers = [
     tag: "Data Analyst",
     photo: "team/Ajay_Singh_Thakur.jpg",
     links: {
-      github: "",
+      github: "https://github.com/Ajayysinghh03",
       instagram: "https://instagram.com/jatin_insta",
       linkedin: "https://www.linkedin.com/in/ajayysinghh",
       twitter: "https://twitter.com/iAJAYY42"
