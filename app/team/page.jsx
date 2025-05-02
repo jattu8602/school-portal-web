@@ -1,3 +1,4 @@
+'use client'
 import TeamSection from "../components/TeamSection";
 import Link from "next/link";
 
