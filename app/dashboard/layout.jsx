@@ -9,6 +9,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { ToastProvider } from '../../app/context/ToastContext'
 import { Bell, Menu, X, User, ChevronDown, Sun, Moon } from 'lucide-react'
 import { getDoc, doc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'
+import { SearchBar } from '../components/ui/search-bar'
 
 export default function DashboardLayout({ children }) {
   const [user, setUser] = useState(null)
@@ -149,150 +150,104 @@ export default function DashboardLayout({ children }) {
       <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'}`}>
         {/* Top Navbar - Always visible */}
         <header className={`fixed top-0 left-0 right-0 ${darkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-sm'} z-30`}>
-          <div className="flex items-center justify-between px-4 h-16">
-            {/* Left section with logo and mobile menu toggle */}
-            <div className="flex items-center">
-              <button
-                className="md:hidden mr-3 text-gray-500 hover:text-gray-700"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
+          <div className="flex flex-col">
+            {/* Top row with logo, notifications, and profile */}
+            <div className="flex items-center justify-between px-4 h-16">
+              {/* Left section with logo and mobile menu toggle */}
               <div className="flex items-center">
-                <div className="h-9 w-9 relative flex-shrink-0">
-                  <img
-                    src={darkMode ? "/present_sir_night_logo.jpg" : "/present_sir_day-logo.jpg"}
-                    alt="Present Sir Logo"
-                    className="h-full w-full object-contain rounded-md"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/36?text=PS";
-                    }}
-                  />
+                <button
+                  className="md:hidden mr-3 text-gray-500 hover:text-gray-700"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                >
+                  {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+                <div className="flex items-center">
+                  <div className="h-9 w-9 relative flex-shrink-0">
+                    <img
+                      src={darkMode ? "/present_sir_night_logo.jpg" : "/present_sir_day-logo.jpg"}
+                      alt="Present Sir Logo"
+                      className="h-full w-full object-contain rounded-md"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://via.placeholder.com/36?text=PS";
+                      }}
+                    />
+                  </div>
+                  <span className="ml-2 text-xl font-bold tracking-wide uppercase hidden sm:block">Present Sir</span>
                 </div>
-                <span className="ml-2 text-xl font-bold tracking-wide uppercase hidden sm:block">Present Sir</span>
+              </div>
+
+              {/* Right section with theme toggle, notifications and profile */}
+              <div className="flex items-center space-x-4">
+                {/* Notifications */}
+                <div className="relative" id="notifications-dropdown">
+                  <button
+                    className="text-gray-500 hover:text-gray-700 relative"
+                    onClick={handleNotificationClick}
+                  >
+                    <Bell size={20} />
+                    {unreadNotifications > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Profile */}
+                <div className="relative" id="profile-dropdown">
+                  <button
+                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  >
+                    <div className={`h-8 w-8 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} flex items-center justify-center overflow-hidden`}>
+                      {schoolInfo?.photoURL ? (
+                        <img
+                          src={schoolInfo.photoURL}
+                          alt={schoolInfo.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "https://via.placeholder.com/32?text=S";
+                          }}
+                        />
+                      ) : (
+                        <User size={16} />
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium hidden md:block ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                      {schoolInfo?.name || user?.email?.split('@')[0] || "School"}
+                    </span>
+                    <ChevronDown size={16} className="hidden md:block" />
+                  </button>
+
+                  {/* Profile dropdown */}
+                  {profileDropdownOpen && (
+                    <div className={`absolute right-0 mt-2 w-48 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-md shadow-lg overflow-hidden z-20`}>
+                      <div className="py-1">
+                        <Link href="/dashboard/profile" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                          Your Profile
+                        </Link>
+                        <Link href="/dashboard/settings" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+                          Settings
+                        </Link>
+                        <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}></div>
+                        <button
+                          onClick={() => auth.signOut().then(() => router.push('/auth/signin'))}
+                          className={`block w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-
-
-
-            
-
-            {/* Right section with theme toggle, notifications and profile */}
-            <div className="flex items-center space-x-4">
-              {/* Theme Toggle */}
-              {/* <button
-                className={`text-gray-500 hover:text-gray-700 p-1 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
-                onClick={toggleDarkMode}
-                aria-label="Toggle theme"
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button> */}
-
-              {/* Notifications */}
-              <div className="relative" id="notifications-dropdown">
-                <button
-                  className="text-gray-500 hover:text-gray-700 relative"
-                  onClick={handleNotificationClick}
-                >
-                  <Bell size={20} />
-                  {unreadNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
-                      {unreadNotifications}
-                    </span>
-                  )}
-                </button>
-
-                {/* Notifications dropdown */}
-                {notificationsOpen && (
-                  <div className={`absolute right-0 mt-2 w-72 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-md shadow-lg overflow-hidden z-20`}>
-                    <div className={`py-2 px-4 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-100'} border-b`}>
-                      <h3 className="text-sm font-semibold">Notifications</h3>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
-                          {notifications.map(notification => (
-                            <div
-                              key={notification.id}
-                              className={`px-4 py-3 ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} cursor-pointer`}
-                              onClick={() => {
-                                // Mark notification as read
-                                const notificationRef = doc(db, 'schools', user.uid, 'notifications', notification.id)
-                                updateDoc(notificationRef, { status: 'read' })
-                                setUnreadNotifications(prev => prev - 1)
-                                setNotificationsOpen(false)
-                              }}
-                            >
-                              <p className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{notification.title}</p>
-                              <p className="text-xs text-gray-500">{notification.time}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-4 py-6 text-center text-sm text-gray-500">
-                          No new notifications
-                        </div>
-                      )}
-                    </div>
-                    <div className={`py-2 px-4 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-100'} border-t text-center`}>
-                      <Link href="/dashboard/notification" className="text-xs text-blue-600 hover:text-blue-800">
-                        View all notifications
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Profile */}
-              <div className="relative" id="profile-dropdown">
-                <button
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                >
-                  <div className={`h-8 w-8 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} flex items-center justify-center overflow-hidden`}>
-                    {schoolInfo?.photoURL ? (
-                      <img
-                        src={schoolInfo.photoURL}
-                        alt={schoolInfo.name}
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://via.placeholder.com/32?text=S";
-                        }}
-                      />
-                    ) : (
-                      <User size={16} />
-                    )}
-                  </div>
-                  <span className={`text-sm font-medium hidden md:block ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                    {schoolInfo?.name || user?.email?.split('@')[0] || "School"}
-                  </span>
-                  <ChevronDown size={16} className="hidden md:block" />
-                </button>
-
-                {/* Profile dropdown */}
-                {profileDropdownOpen && (
-                  <div className={`absolute right-0 mt-2 w-48 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-md shadow-lg overflow-hidden z-20`}>
-                    <div className="py-1">
-                      <Link href="/dashboard/profile" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-                        Your Profile
-                      </Link>
-                      <Link href="/dashboard/settings" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-                        Settings
-                      </Link>
-                      <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}></div>
-                      <button
-                        onClick={() => auth.signOut().then(() => router.push('/auth/signin'))}
-                        className={`block w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Search bar row */}
+            <div className="border-t px-4 py-2">
+              <SearchBar />
             </div>
           </div>
         </header>
