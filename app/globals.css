@@ -3,8 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 245, 247, 250;
+  --background: #6b6b6b;
+  --foreground: #000000;
+}
+h1,h2,h3,h4,h5,h6{
+  color: #000;
 }
 
 body {
@@ -28,25 +31,15 @@ body {
   border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #646464;
+    --foreground: #000000;
+  }
 }
 
-/* Input focus styles */
-input:focus,
-select:focus,
-textarea:focus {
-  --tw-ring-color: rgba(14, 165, 233, 0.25);
-}
-
-/* Button transitions */
-button {
-  transition: all 0.2s ease;
-}
-
-/* Table styles */
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
 }

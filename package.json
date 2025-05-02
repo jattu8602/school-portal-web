@@ -10,8 +10,10 @@
     "generate-secret": "node scripts/generate-secret.js"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.2.0",
     "firebase": "^11.6.0",
     "firebase-admin": "^13.3.0",
+    "lucide-react": "^0.503.0",
     "next": "15.3.1",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/react": "19.1.2",
     "autoprefixer": "^10.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",

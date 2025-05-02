@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(schoolId) {
+      return request.auth.uid == schoolId;
+    }
+
+    // School data rules
+    match /schools/{schoolId} {
+      // Allow school to read and write their own document
+      allow read, write: if isSignedIn() && isOwner(schoolId);
+
+      // Classes collection
+      match /classes/{classId} {
+        // School can read and manage their classes
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Teachers collection
+      match /teachers/{teacherId} {
+        // School can read and manage their teachers
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Students collection
+      match /students/{studentId} {
+        // School can read and manage their students
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Attendance collection
+      match /attendance/{attendanceId} {
+        // School can read and manage attendance records
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Timetable collection
+      match /timetable/{timetableId} {
+        // School can read and manage timetables
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Exams collection
+      match /exams/{examId} {
+        // School can read and manage exams
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+
+        // Exam results subcollection
+        match /results/{resultId} {
+          allow read, write: if isSignedIn() && isOwner(schoolId);
+        }
+      }
+
+      // Fees collection
+      match /fees/{feeId} {
+        // School can read and manage fee records
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+
+      // Announcements collection
+      match /announcements/{announcementId} {
+        // School can read and manage announcements
+        allow read, write: if isSignedIn() && isOwner(schoolId);
+      }
+    }
+
+    // Public school information - read only
+    match /public-schools/{schoolId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(schoolId);
+    }
+  }
+}
