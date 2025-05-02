@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { auth, db } from '../../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { ToastProvider } from '../../app/context/ToastContext'
-import { Bell, Menu, X, User, ChevronDown, Sun, Moon } from 'lucide-react'
+import { Bell, Menu, X, User, ChevronDown } from 'lucide-react'
 import { getDoc, doc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'
 import { SearchBar } from '../components/ui/search-bar'
 
@@ -18,30 +18,21 @@ export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
-  // Check system dark mode preference
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: light)').matches
-      setDarkMode(prefersDark)
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
 
-      // Listen for changes in dark mode preference
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleChange = (e) => {
-        setDarkMode(e.matches)
-      }
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
 
-      mediaQuery.addEventListener('change', handleChange)
-
-      return () => {
-        mediaQuery.removeEventListener('change', handleChange)
-      }
-    }
-  }, [])
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -102,11 +93,6 @@ export default function DashboardLayout({ children }) {
     }
   }, [profileDropdownOpen, notificationsOpen])
 
-  // Toggle dark mode
-  const toggleDarkMode = useCallback(() => {
-    setDarkMode(prevMode => !prevMode)
-  }, [])
-
   const navigation = [
     { name: 'Home', href: '/dashboard', icon: '🏠' },
     { name: 'Add Class Details', href: '/dashboard/add-class', icon: '📚' },
@@ -134,6 +120,8 @@ export default function DashboardLayout({ children }) {
     router.push('/dashboard/notification')
   }
 
+  // Placeholder for any future custom handlers
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -147,114 +135,112 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ToastProvider>
-      <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'}`}>
+      <div className="min-h-screen bg-gray-100 text-gray-900">
         {/* Top Navbar - Always visible */}
-        <header className={`fixed top-0 left-0 right-0 ${darkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-sm'} z-30`}>
-          <div className="flex flex-col">
-            {/* Top row with logo, notifications, and profile */}
-            <div className="flex items-center justify-between px-4 h-16">
-              {/* Left section with logo and mobile menu toggle */}
-              <div className="flex items-center">
-                <button
-                  className="md:hidden mr-3 text-gray-500 hover:text-gray-700"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                >
-                  {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-                </button>
-                <div className="flex items-center">
-                  <div className="h-9 w-9 relative flex-shrink-0">
-                    <img
-                      src={darkMode ? "/present_sir_night_logo.jpg" : "/present_sir_day-logo.jpg"}
-                      alt="Present Sir Logo"
-                      className="h-full w-full object-contain rounded-md"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "https://via.placeholder.com/36?text=PS";
-                      }}
-                    />
-                  </div>
-                  <span className="ml-2 text-xl font-bold tracking-wide uppercase hidden sm:block">Present Sir</span>
-                </div>
-              </div>
+        <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-30 h-16">
+          <div className="flex items-center px-2 md:px-4 h-full">
+            {/* Left section with menu toggle and logo */}
+            <div className={`flex items-center ${isMobile ? 'w-auto' : 'w-1/4'}`}>
+              <button
+                className="md:hidden mr-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              >
+                {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
 
-              {/* Right section with theme toggle, notifications and profile */}
-              <div className="flex items-center space-x-4">
-                {/* Notifications */}
-                <div className="relative" id="notifications-dropdown">
-                  <button
-                    className="text-gray-500 hover:text-gray-700 relative"
-                    onClick={handleNotificationClick}
-                  >
-                    <Bell size={20} />
-                    {unreadNotifications > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
-                        {unreadNotifications}
-                      </span>
-                    )}
-                  </button>
+              <div className="flex-shrink-0 flex items-center">
+                <div className="h-8 w-8 relative hidden md:block">
+                  <img
+                    src="/present_sir_day-logo.jpg"
+                    alt="Present Sir Logo"
+                    className="h-full w-full object-contain rounded-md"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/32?text=PS";
+                    }}
+                  />
                 </div>
-
-                {/* Profile */}
-                <div className="relative" id="profile-dropdown">
-                  <button
-                    className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  >
-                    <div className={`h-8 w-8 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} flex items-center justify-center overflow-hidden`}>
-                      {schoolInfo?.photoURL ? (
-                        <img
-                          src={schoolInfo.photoURL}
-                          alt={schoolInfo.name}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "https://via.placeholder.com/32?text=S";
-                          }}
-                        />
-                      ) : (
-                        <User size={16} />
-                      )}
-                    </div>
-                    <span className={`text-sm font-medium hidden md:block ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                      {schoolInfo?.name || user?.email?.split('@')[0] || "School"}
-                    </span>
-                    <ChevronDown size={16} className="hidden md:block" />
-                  </button>
-
-                  {/* Profile dropdown */}
-                  {profileDropdownOpen && (
-                    <div className={`absolute right-0 mt-2 w-48 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-md shadow-lg overflow-hidden z-20`}>
-                      <div className="py-1">
-                        <Link href="/dashboard/profile" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-                          Your Profile
-                        </Link>
-                        <Link href="/dashboard/settings" className={`block px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}>
-                          Settings
-                        </Link>
-                        <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}></div>
-                        <button
-                          onClick={() => auth.signOut().then(() => router.push('/auth/signin'))}
-                          className={`block w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'}`}
-                        >
-                          Logout
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <span className="ml-2 text-lg font-bold tracking-wide uppercase hidden md:block">Present Sir</span>
               </div>
             </div>
 
-            {/* Search bar row */}
-            <div className="border-t px-4 py-2">
+            {/* Center section with search bar - expanded on mobile */}
+            <div className={`px-1 md:px-4 ${isMobile ? 'flex-1' : 'w-1/2'}`}>
               <SearchBar />
+            </div>
+
+            {/* Right section with notifications and profile */}
+            <div className={`flex items-center justify-end space-x-2 md:space-x-4 ${isMobile ? 'ml-1' : 'w-1/4'}`}>
+              {/* Notifications */}
+              <div className="relative" id="notifications-dropdown">
+                <button
+                  className="text-gray-500 hover:text-gray-700 relative p-1 rounded-full hover:bg-gray-100"
+                  onClick={handleNotificationClick}
+                >
+                  <Bell size={isMobile ? 16 : 18} />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-xs text-white flex items-center justify-center">
+                      {unreadNotifications}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Profile */}
+              <div className="relative" id="profile-dropdown">
+                <button
+                  className="flex items-center space-x-1 md:space-x-2 text-gray-700 hover:bg-gray-100 rounded-full p-1"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                >
+                  <div className="h-7 w-7 md:h-8 md:w-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {schoolInfo?.photoURL ? (
+                      <img
+                        src={schoolInfo.photoURL}
+                        alt={schoolInfo.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/32?text=S";
+                        }}
+                      />
+                    ) : (
+                      <User size={isMobile ? 14 : 16} />
+                    )}
+                  </div>
+                  <span className="text-sm font-medium hidden md:block text-gray-800">
+                    {schoolInfo?.name || user?.email?.split('@')[0] || "School"}
+                  </span>
+                  <ChevronDown size={14} className="hidden md:block" />
+                </button>
+
+                {/* Profile dropdown */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20">
+                    <div className="py-1">
+                      <Link href="/dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Your Profile
+                      </Link>
+                      <Link href="/dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Settings
+                      </Link>
+                      <div className="border-t border-gray-100"></div>
+                      <button
+                        onClick={() => auth.signOut().then(() => router.push('/auth/signin'))}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
         {/* Sidebar - Hidden on mobile unless toggled */}
         <aside
-          className={`fixed inset-y-0 left-0 w-64 ${darkMode ? 'bg-gray-800 shadow-gray-900' : 'bg-white shadow-lg'} transition-transform transform z-20 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform transform z-20 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
           style={{ top: '64px', height: 'calc(100vh - 64px)' }}
         >
           <div className="flex flex-col h-full">
@@ -266,27 +252,23 @@ export default function DashboardLayout({ children }) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center px-6 py-3 ${
+                    className={`flex items-center px-4 py-2.5 my-0.5 mx-2 rounded-md ${
                       isActive
-                        ? darkMode
-                          ? 'bg-gray-700 text-blue-400 border-r-4 border-blue-400'
-                          : 'bg-blue-50 text-blue-700 border-r-4 border-blue-500'
-                        : darkMode
-                          ? 'text-gray-300 hover:bg-gray-700'
-                          : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="mr-3">{item.icon}</span>
-                    {item.name}
+                    <span className="mr-3 w-5 text-center">{item.icon}</span>
+                    <span className="text-sm">{item.name}</span>
                   </Link>
                 );
               })}
             </nav>
 
             {/* School Info */}
-            <div className={`border-t p-4 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="border-t p-4 border-gray-200">
               <div className="text-xs text-gray-500 mb-1">Logged in as:</div>
-              <div className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+              <div className="text-sm font-medium text-gray-800">
                 {schoolInfo?.name || "School Account"}
               </div>
               <div className="text-xs text-gray-500">
@@ -305,7 +287,7 @@ export default function DashboardLayout({ children }) {
         )}
 
         {/* Main Content - Adjust padding for fixed navbar */}
-        <main className={`md:ml-64 min-h-screen pt-16 ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+        <main className="md:ml-64 min-h-screen pt-16 bg-gray-100 px-4 py-6">
           {children}
         </main>
       </div>
