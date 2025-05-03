@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { auth, db } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
-import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore"
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
 import BannerSlideshow from "../components/dashboard/BannerSlideshow"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -155,6 +155,38 @@ export default function DashboardHome() {
     ];
   };
 
+  // Function to update banner colors in Firebase
+  const updateBannerColors = useCallback(async (bannerId, colors) => {
+    if (!user || colors.length === 0) return;
+
+    try {
+      const bannerRef = doc(db, "schools", user.uid, "banners", bannerId);
+      await updateDoc(bannerRef, {
+        extractedColors: colors,
+        updatedAt: new Date()
+      });
+      console.log(`Updated colors for banner ${bannerId} from dashboard`);
+
+      // Update local state to reflect the change without refetching
+      setBanners(prev =>
+        prev.map(banner =>
+          banner.id === bannerId
+            ? { ...banner, extractedColors: colors }
+            : banner
+        )
+      );
+    } catch (error) {
+      console.error("Error updating banner colors:", error);
+    }
+  }, [user]);
+
+  // Function to handle color extraction from videos
+  const handleColorExtraction = useCallback((bannerId, colors) => {
+    if (colors.length > 0) {
+      updateBannerColors(bannerId, colors);
+    }
+  }, [updateBannerColors]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -227,7 +259,7 @@ export default function DashboardHome() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="h-[200px] sm:h-[300px] md:h-[400px]">
-                  <BannerSlideshow banners={banners} />
+                  <BannerSlideshow banners={banners} onColorsExtracted={handleColorExtraction} />
                 </div>
               </CardContent>
             </Card>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { auth, db } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
@@ -17,6 +17,39 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import MobilePreview from "@/app/components/dashboard/MobilePreview"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+
+// Helper function to extract dominant colors from video frames
+const extractColors = (videoElement, canvas, callback) => {
+  if (!videoElement || !canvas) return;
+
+  const context = canvas.getContext('2d');
+  if (!context) return;
+
+  // Draw the current video frame to the canvas
+  context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+  // Extract color data from 4 different regions (4 corners)
+  const regions = [
+    {x: 0, y: 0}, // top-left
+    {x: canvas.width - 1, y: 0}, // top-right
+    {x: 0, y: canvas.height - 1}, // bottom-left
+    {x: canvas.width - 1, y: canvas.height - 1} // bottom-right
+  ];
+
+  const colors = regions.map(({x, y}) => {
+    const pixel = context.getImageData(x, y, 1, 1).data;
+    return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+  });
+
+  // Get central region color too
+  const centerX = Math.floor(canvas.width / 2);
+  const centerY = Math.floor(canvas.height / 2);
+  const centerPixel = context.getImageData(centerX, centerY, 1, 1).data;
+  const centerColor = `rgb(${centerPixel[0]}, ${centerPixel[1]}, ${centerPixel[2]})`;
+
+  // Pass extracted colors to callback
+  callback([...colors, centerColor]);
+};
 
 // Add these environment variables to your .env.local file
 // NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -38,7 +71,26 @@ export default function AddBannerPage() {
   const [tag, setTag] = useState("")
   const [buttonText, setButtonText] = useState("")
   const [buttonLink, setButtonLink] = useState("")
+  const [extractedColors, setExtractedColors] = useState([])
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const colorExtractionTimerRef = useRef(null)
   const router = useRouter()
+
+  // Create canvas for color extraction when component mounts
+  useEffect(() => {
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement('canvas');
+      canvasRef.current.width = 64;  // small size is enough for color sampling
+      canvasRef.current.height = 36;
+    }
+
+    return () => {
+      if (colorExtractionTimerRef.current) {
+        clearInterval(colorExtractionTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -53,6 +105,31 @@ export default function AddBannerPage() {
 
     return () => unsubscribe()
   }, [router])
+
+  // Update colors when the video element changes
+  useEffect(() => {
+    if (bannerType === "video" && videoRef.current && previewUrl) {
+      // Clear any existing timer
+      if (colorExtractionTimerRef.current) {
+        clearInterval(colorExtractionTimerRef.current);
+      }
+
+      // Extract colors periodically to update as the video plays
+      videoRef.current.addEventListener('loadeddata', () => {
+        colorExtractionTimerRef.current = setInterval(() => {
+          extractColors(videoRef.current, canvasRef.current, (colors) => {
+            setExtractedColors(colors);
+          });
+        }, 1000);
+      });
+    }
+
+    return () => {
+      if (colorExtractionTimerRef.current) {
+        clearInterval(colorExtractionTimerRef.current);
+      }
+    };
+  }, [bannerType, previewUrl]);
 
   const fetchSchoolInfo = async (schoolId) => {
     try {
@@ -85,6 +162,7 @@ export default function AddBannerPage() {
       setUploading(true)
       setUploadProgress(0)
       setError("")
+      setExtractedColors([])
 
       // Create object URL for preview
       const objectUrl = URL.createObjectURL(file)
@@ -187,6 +265,17 @@ export default function AddBannerPage() {
       setMediaUrl(data.secure_url);
       setUploading(false);
       setUploadProgress(100);
+
+      // Save video colors to localStorage for later use
+      if (bannerType === "video" && extractedColors.length > 0) {
+        try {
+          const cachedColors = JSON.parse(localStorage.getItem('cachedVideoColors') || '{}');
+          cachedColors[data.secure_url] = extractedColors;
+          localStorage.setItem('cachedVideoColors', JSON.stringify(cachedColors));
+        } catch (error) {
+          console.error("Error caching video colors:", error);
+        }
+      }
     } catch (error) {
       console.error("Upload error:", error);
       setError(`Failed to upload file: ${error.message}. Please try again.`);
@@ -202,6 +291,11 @@ export default function AddBannerPage() {
     setMediaUrl("")
     setPreviewUrl("")
     setUploadProgress(0)
+    setExtractedColors([])
+
+    if (colorExtractionTimerRef.current) {
+      clearInterval(colorExtractionTimerRef.current);
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -239,6 +333,11 @@ export default function AddBannerPage() {
         updatedAt: new Date()
       }
 
+      // Add extracted colors to banner data if available
+      if (bannerType === "video" && extractedColors.length > 0) {
+        bannerData.extractedColors = extractedColors;
+      }
+
       console.log("Saving banner to Firestore:", bannerData)
       console.log("Collection path:", `schools/${user.uid}/banners`)
 
@@ -257,6 +356,7 @@ export default function AddBannerPage() {
       setButtonText("")
       setButtonLink("")
       setUploadProgress(0)
+      setExtractedColors([])
 
       // Redirect after a brief delay
       setTimeout(() => {
@@ -293,6 +393,17 @@ export default function AddBannerPage() {
     tags: tag ? [tag] : [],
     buttonText: buttonText || "",
     buttonLink: buttonLink || "#",
+  }
+
+  // Generate a gradient background style if video colors are available
+  const gradientStyle = {};
+  if (bannerType === 'video' && extractedColors.length >= 5) {
+    const [topLeft, topRight, bottomLeft, bottomRight, center] = extractedColors;
+    gradientStyle.background = `radial-gradient(circle at center, ${center} 30%, ${topLeft} 70%, ${bottomRight} 100%)`;
+    // Add these properties to make gradient visible
+    gradientStyle.position = 'absolute';
+    gradientStyle.inset = '0';
+    gradientStyle.zIndex = '1';
   }
 
   return (
@@ -369,6 +480,9 @@ export default function AddBannerPage() {
                     {mediaUrl ? (
                       <div className="relative">
                         <div className="aspect-video rounded-md overflow-hidden bg-gray-100 relative">
+                          {bannerType === 'video' && extractedColors.length >= 5 && (
+                            <div className="absolute inset-0" style={gradientStyle}></div>
+                          )}
                           {bannerType === "image" ? (
                             <img
                               src={previewUrl || mediaUrl}
@@ -376,24 +490,50 @@ export default function AddBannerPage() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <video
-                              src={previewUrl || mediaUrl}
-                              className="w-full h-full object-cover"
-                              controls
-                            />
+                            <div className="flex items-center justify-center h-full">
+                              <video
+                                ref={videoRef}
+                                src={previewUrl || mediaUrl}
+                                className="h-auto max-h-full max-w-[90%] rounded-md object-contain mx-auto z-10 transform scale-115"
+                                controls
+                                autoPlay
+                                muted
+                                loop
+                                style={{
+                                  backgroundColor: 'transparent',
+                                  objectFit: 'cover',
+                                  transformOrigin: 'center',
+                                }}
+                              />
+                            </div>
                           )}
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="absolute top-2 right-2"
+                            className="absolute top-2 right-2 z-20"
                             onClick={handleRemoveMedia}
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        <p className="text-sm text-green-600 mt-2">
-                          ✓ Media uploaded successfully
-                        </p>
+                        <div className="flex justify-between mt-3">
+                          <p className="text-sm text-green-600">
+                            ✓ Media uploaded successfully
+                          </p>
+
+                          {bannerType === 'video' && extractedColors.length > 0 && (
+                            <div className="flex space-x-1">
+                              {extractedColors.map((color, index) => (
+                                <div
+                                  key={index}
+                                  className="w-6 h-6 rounded-full border border-gray-300"
+                                  style={{ backgroundColor: color }}
+                                  title={`Extracted color ${index + 1}`}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="border-2 border-dashed border-gray-300 rounded-md p-8 text-center">

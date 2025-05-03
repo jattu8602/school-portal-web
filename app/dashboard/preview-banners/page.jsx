@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { auth, db } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
-import { collection, query, where, getDocs, doc, getDoc, deleteDoc, orderBy } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc, orderBy, updateDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -155,6 +155,38 @@ export default function PreviewBannersPage() {
     router.push(`/dashboard/edit-banner/${id}`);
   };
 
+  // Function to update banner colors in Firebase
+  const updateBannerColors = useCallback(async (bannerId, colors) => {
+    if (!user || colors.length === 0) return;
+
+    try {
+      const bannerRef = doc(db, "schools", user.uid, "banners", bannerId);
+      await updateDoc(bannerRef, {
+        extractedColors: colors,
+        updatedAt: new Date()
+      });
+      console.log(`Updated colors for banner ${bannerId}`);
+
+      // Update local state to reflect the change without refetching
+      setBanners(prev =>
+        prev.map(banner =>
+          banner.id === bannerId
+            ? { ...banner, extractedColors: colors }
+            : banner
+        )
+      );
+    } catch (error) {
+      console.error("Error updating banner colors:", error);
+    }
+  }, [user]);
+
+  // Function to handle color extraction from videos
+  const handleColorExtraction = useCallback((bannerId, colors) => {
+    if (colors.length > 0) {
+      updateBannerColors(bannerId, colors);
+    }
+  }, [updateBannerColors]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -225,11 +257,11 @@ export default function PreviewBannersPage() {
               <CardContent className="p-0">
                 {viewMode === "web" ? (
                   <div className="h-[400px]">
-                    <BannerSlideshow banners={banners} />
+                    <BannerSlideshow banners={banners} onColorsExtracted={handleColorExtraction} />
                   </div>
                 ) : (
                   <div className="flex justify-center py-8">
-                    <MobilePreview banners={banners} />
+                    <MobilePreview banners={banners} onColorsExtracted={handleColorExtraction} />
                   </div>
                 )}
               </CardContent>
@@ -289,7 +321,7 @@ export default function PreviewBannersPage() {
                 <CardDescription>How banners appear on mobile devices</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center py-6">
-                <MobilePreview banners={banners} />
+                <MobilePreview banners={banners} onColorsExtracted={handleColorExtraction} />
               </CardContent>
             </Card>
           </div>
