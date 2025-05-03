@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight, Play, Pause } from "lucide-react"
+import { ChevronLeft, ChevronRight, Play, Pause, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import PropTypes from "prop-types"
 
@@ -13,7 +13,10 @@ import PropTypes from "prop-types"
 export default function BannerSlideshow({ banners }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
+  const [videoLoaded, setVideoLoaded] = useState({})
+  const [cachedVideos, setCachedVideos] = useState({})
   const intervalRef = useRef(null)
+  const videoRefs = useRef({})
 
   const goToNext = () => {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length)
@@ -31,6 +34,29 @@ export default function BannerSlideshow({ banners }) {
     setIsPlaying(!isPlaying)
   }
 
+  // Initialize video loading states and cache on mount
+  useEffect(() => {
+    // Initialize loading states for all videos
+    const initialLoadState = {}
+    banners.forEach((banner, index) => {
+      if (banner.type === "video") {
+        initialLoadState[index] = false
+      }
+    })
+    setVideoLoaded(initialLoadState)
+
+    // Try to retrieve cached video URLs from localStorage
+    try {
+      const cachedData = localStorage.getItem('cachedBannerVideos')
+      if (cachedData) {
+        setCachedVideos(JSON.parse(cachedData))
+      }
+    } catch (error) {
+      console.error("Error retrieving cached videos:", error)
+    }
+  }, [banners])
+
+  // Handle slideshow autoplay
   useEffect(() => {
     if (isPlaying) {
       intervalRef.current = setInterval(goToNext, 5000)
@@ -44,6 +70,48 @@ export default function BannerSlideshow({ banners }) {
       }
     }
   }, [isPlaying])
+
+  // Handle video playback when slide changes
+  useEffect(() => {
+    // Pause all videos
+    Object.keys(videoRefs.current).forEach(index => {
+      const videoElement = videoRefs.current[index]
+      if (videoElement && !videoElement.paused) {
+        videoElement.pause()
+      }
+    })
+
+    // Play the current video if it's a video slide
+    const currentBanner = banners[currentIndex]
+    if (currentBanner && currentBanner.type === "video") {
+      const videoElement = videoRefs.current[currentIndex]
+      if (videoElement) {
+        // Set a small timeout to ensure DOM is ready
+        setTimeout(() => {
+          const playPromise = videoElement.play()
+          if (playPromise !== undefined) {
+            playPromise.catch(error => {
+              console.error("Error playing video:", error)
+            })
+          }
+        }, 50)
+      }
+    }
+  }, [currentIndex, banners])
+
+  // Cache video URLs when they're successfully loaded
+  const handleVideoLoad = (index, url) => {
+    setVideoLoaded(prev => ({ ...prev, [index]: true }))
+
+    // Cache the video URL in localStorage
+    try {
+      const updatedCache = { ...cachedVideos, [url]: true }
+      setCachedVideos(updatedCache)
+      localStorage.setItem('cachedBannerVideos', JSON.stringify(updatedCache))
+    } catch (error) {
+      console.error("Error caching video:", error)
+    }
+  }
 
   if (banners.length === 0) {
     return (
@@ -114,12 +182,23 @@ export default function BannerSlideshow({ banners }) {
               </div>
             ) : (
               <div className="relative h-full w-full bg-black">
+                {!videoLoaded[index] && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/50">
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                    <span className="text-white ml-2 text-sm">Loading video...</span>
+                  </div>
+                )}
                 <video
+                  ref={el => videoRefs.current[index] = el}
                   src={banner.url}
                   className="h-full w-full object-contain"
-                  autoPlay={index === currentIndex}
                   muted
                   loop
+                  playsInline
+                  preload="auto"
+                  poster={videoLoaded[index] ? undefined : "/video-placeholder.jpg"}
+                  onLoadedData={() => handleVideoLoad(index, banner.url)}
+                  onError={(e) => console.error("Video error:", e)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
 

@@ -1,16 +1,29 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import PropTypes from "prop-types"
-import { ChevronLeft, ChevronRight, Wifi, Battery, Signal } from "lucide-react"
+import { ChevronLeft, ChevronRight, Wifi, Battery, Signal, Loader2 } from "lucide-react"
 
 export default function MobilePreview({ banners }) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [videoLoaded, setVideoLoaded] = useState({})
+  const videoRefs = useRef({})
 
+  // Initialize video loading states
   useEffect(() => {
-    // Auto-rotate banners
+    const initialLoadState = {}
+    banners.forEach((banner, index) => {
+      if (banner.type === "video") {
+        initialLoadState[index] = false
+      }
+    })
+    setVideoLoaded(initialLoadState)
+  }, [banners])
+
+  // Auto-rotate banners
+  useEffect(() => {
     const interval = setInterval(() => {
       if (banners.length > 1) {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length)
@@ -19,6 +32,38 @@ export default function MobilePreview({ banners }) {
 
     return () => clearInterval(interval)
   }, [banners.length])
+
+  // Handle video playback when slide changes
+  useEffect(() => {
+    // Pause all videos
+    Object.keys(videoRefs.current).forEach(index => {
+      const videoElement = videoRefs.current[index]
+      if (videoElement && !videoElement.paused) {
+        videoElement.pause()
+      }
+    })
+
+    // Play the current video if it's a video slide
+    const currentBanner = banners[currentIndex]
+    if (currentBanner && currentBanner.type === "video") {
+      const videoElement = videoRefs.current[currentIndex]
+      if (videoElement) {
+        // Set a small timeout to ensure DOM is ready
+        setTimeout(() => {
+          const playPromise = videoElement.play()
+          if (playPromise !== undefined) {
+            playPromise.catch(error => {
+              console.error("Error playing video in mobile preview:", error)
+            })
+          }
+        }, 50)
+      }
+    }
+  }, [currentIndex, banners])
+
+  const handleVideoLoad = (index) => {
+    setVideoLoaded(prev => ({ ...prev, [index]: true }))
+  }
 
   const formattedTime = () => {
     const now = new Date()
@@ -115,12 +160,23 @@ export default function MobilePreview({ banners }) {
               </div>
             ) : (
               <div className="relative h-full w-full bg-black">
+                {!videoLoaded[index] && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/50">
+                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    <span className="text-white ml-1 text-[8px]">Loading...</span>
+                  </div>
+                )}
                 <video
+                  ref={el => videoRefs.current[index] = el}
                   src={banner.url}
                   className="h-full w-full object-contain"
-                  autoPlay={index === currentIndex}
                   muted
                   loop
+                  playsInline
+                  preload="auto"
+                  poster="/video-placeholder.jpg"
+                  onLoadedData={() => handleVideoLoad(index)}
+                  onError={(e) => console.error("Mobile preview video error:", e)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
 
