@@ -234,9 +234,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
     // Create a more vibrant gradient using extracted colors
     const [color1, color2, color3, color4, color5] = currentColors;
     gradientStyle.background = `radial-gradient(circle at center,
-                                ${color1 || 'rgba(0,0,0,0.8)'} 20%,
-                                ${color3 || 'rgba(0,0,0,0.7)'} 50%,
-                                ${color5 || 'rgba(0,0,0,0.6)'} 80%)`;
+                              ${color1 || 'rgba(0,0,0,0.8)'} 20%,
+                              ${color3 || 'rgba(0,0,0,0.7)'} 50%,
+                              ${color5 || 'rgba(0,0,0,0.6)'} 80%)`;
     // Add these to make sure gradient is visible
     gradientStyle.position = 'absolute';
     gradientStyle.inset = '0';
@@ -245,7 +245,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden z-10">
       {/* Gradient Background Layer - separated from content for proper layering */}
       {currentBanner?.type === 'video' && currentColors.length > 0 && (
         <div className="absolute inset-0" style={gradientStyle}></div>
@@ -372,7 +372,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
       </div>
 
       {/* Navigation Controls - Side arrows positioned to not overlap with content */}
-      <div className="absolute inset-0 flex items-center justify-between pointer-events-none z-40">
+      <div className="absolute inset-0 flex items-center justify-between pointer-events-none z-30">
         <Button
           variant="ghost"
           size="icon"
@@ -392,7 +392,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
       </div>
 
       {/* Indicators and Controls */}
-      <div className="absolute bottom-2 sm:bottom-4 left-0 right-0 flex justify-center items-center space-x-2 sm:space-x-4 pointer-events-none z-40">
+      <div className="absolute bottom-2 sm:bottom-4 left-0 right-0 flex justify-center items-center space-x-2 sm:space-x-4 pointer-events-none z-30">
         <div className="flex space-x-1 sm:space-x-2">
           {banners.map((_, index) => (
             <button
