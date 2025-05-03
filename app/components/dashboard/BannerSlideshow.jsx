@@ -55,6 +55,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
   const [cachedVideos, setCachedVideos] = useState({})
   const [videoColors, setVideoColors] = useState({})
   const [isHovering, setIsHovering] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
   const intervalRef = useRef(null)
   const videoRefs = useRef({})
   const canvasRef = useRef(null)
@@ -62,15 +63,24 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
   const containerRef = useRef(null)
 
   const goToNext = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length)
+    if (transitioning) return;
+    setTransitioning(true);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
+    setTimeout(() => setTransitioning(false), 1200);
   }
 
   const goToPrevious = () => {
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + banners.length) % banners.length)
+    if (transitioning) return;
+    setTransitioning(true);
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + banners.length) % banners.length);
+    setTimeout(() => setTransitioning(false), 1200);
   }
 
   const goToSlide = (index) => {
-    setCurrentIndex(index)
+    if (transitioning || index === currentIndex) return;
+    setTransitioning(true);
+    setCurrentIndex(index);
+    setTimeout(() => setTransitioning(false), 1200);
   }
 
   const togglePlayPause = () => {
@@ -120,7 +130,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
   // Handle slideshow autoplay
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !transitioning) {
       intervalRef.current = setInterval(goToNext, 5000)
     } else if (intervalRef.current) {
       clearInterval(intervalRef.current)
@@ -131,7 +141,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         clearInterval(intervalRef.current)
       }
     }
-  }, [isPlaying])
+  }, [isPlaying, transitioning])
 
   // Pause slideshow autoplay when hovering
   useEffect(() => {
@@ -150,6 +160,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
   // Handle video playback when slide changes
   useEffect(() => {
+    // Don't change video playback state during a transition
+    if (transitioning) return;
+
     // Pause all videos
     Object.keys(videoRefs.current).forEach(index => {
       const videoElement = videoRefs.current[index]
@@ -165,11 +178,13 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
       if (videoElement) {
         // Set a small timeout to ensure DOM is ready
         setTimeout(() => {
-          const playPromise = videoElement.play()
-          if (playPromise !== undefined) {
-            playPromise.catch(error => {
-              console.error("Error playing video:", error)
-            })
+          if (videoElement.readyState >= 2) { // Make sure video is ready to play
+            const playPromise = videoElement.play()
+            if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                console.error("Error playing video:", error)
+              })
+            }
           }
 
           // Start extracting colors periodically
@@ -205,7 +220,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         clearInterval(colorExtractionTimerRef.current);
       }
     };
-  }, [currentIndex, banners, videoColors, onColorsExtracted])
+  }, [currentIndex, banners, videoColors, onColorsExtracted, transitioning])
 
   // Cache video URLs when they're successfully loaded
   const handleVideoLoad = (index, url) => {
@@ -274,7 +289,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
           <div
             key={banner.id}
             className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === currentIndex ? "opacity-100" : "opacity-0 pointer-events-none"
+              index === currentIndex ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
             }`}
           >
             {banner.type === "image" ? (
@@ -404,16 +419,18 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm"
+          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${transitioning ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={goToPrevious}
+          disabled={transitioning}
         >
           <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm"
+          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${transitioning ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={goToNext}
+          disabled={transitioning}
         >
           <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
@@ -426,8 +443,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto shadow-sm"
+            className={`h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto shadow-sm ${transitioning ? 'opacity-50' : ''}`}
             onClick={togglePlayPause}
+            disabled={transitioning}
           >
             {isPlaying ?
               <Pause className="h-3 w-3 sm:h-4 sm:w-4" /> :
@@ -445,7 +463,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
                   ? "bg-white w-6 sm:w-8"
                   : "bg-white/50 w-2 sm:w-3 hover:bg-white/70"
               }`}
+              disabled={transitioning}
               aria-label={`Go to slide ${index + 1}`}
+              aria-current={index === currentIndex ? "true" : "false"}
             />
           ))}
         </div>
