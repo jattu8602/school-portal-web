@@ -137,7 +137,7 @@ export default function DashboardLayout({ children }) {
     <ToastProvider>
       <div className="min-h-screen bg-gray-100 text-gray-900">
         {/* Top Navbar - Always visible */}
-        <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-30 h-16">
+        <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16">
           <div className="flex items-center px-2 md:px-4 h-full">
             {/* Left section with menu toggle and logo */}
             <div className={`flex items-center ${isMobile ? 'w-auto' : 'w-1/4'}`}>
@@ -240,7 +240,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Sidebar - Hidden on mobile unless toggled */}
         <aside
-          className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform transform z-20 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform transform z-50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
           style={{ top: '64px', height: 'calc(100vh - 64px)' }}
         >
           <div className="flex flex-col h-full">
@@ -278,16 +278,16 @@ export default function DashboardLayout({ children }) {
           </div>
         </aside>
 
-        {/* Overlay for mobile sidebar */}
+        {/* Mobile sidebar backdrop - visible only when sidebar open on mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 md:hidden z-10"
+            className="fixed inset-0 bg-black/50 md:hidden z-40"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Main Content - Adjust padding for fixed navbar */}
-        <main className="md:ml-64 min-h-screen pt-16 bg-gray-100 px-4 py-6">
+        <main className="md:ml-64 min-h-screen pt-16 bg-gray-100 px-4 py-6 relative z-0">
           {children}
         </main>
       </div>

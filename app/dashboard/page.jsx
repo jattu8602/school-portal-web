@@ -8,13 +8,19 @@ import { onAuthStateChanged } from "firebase/auth"
 import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
 import BannerSlideshow from "../components/dashboard/BannerSlideshow"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Eye, Users, BookOpen, Wallet, Calendar } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import {
+  PlusCircle, Eye, Users, BookOpen, Wallet, Calendar,
+  ArrowUpRight, Bell, ChevronRight, TrendingUp,
+  UserPlus, Clock, CheckCircle, Award
+} from "lucide-react"
 
 export default function DashboardHome() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("teachers")
+  const [activeTab, setActiveTab] = useState("overview")
   const [showDebug, setShowDebug] = useState(false)
   const [banners, setBanners] = useState([])
   const [stats, setStats] = useState({
@@ -22,6 +28,8 @@ export default function DashboardHome() {
     totalTeachers: 0,
     totalClasses: 0,
     feeCollection: 0,
+    attendance: 0,
+    performance: 0
   })
   const router = useRouter()
 
@@ -62,6 +70,8 @@ export default function DashboardHome() {
         totalTeachers: 12,
         totalClasses: 8,
         feeCollection: 24000,
+        attendance: 92,
+        performance: 78
       })
     } catch (error) {
       console.error("Error fetching school info:", error)
@@ -189,10 +199,10 @@ export default function DashboardHome() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-lg">Loading...</p>
+          <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">Loading your dashboard...</p>
         </div>
       </div>
     )
@@ -204,184 +214,397 @@ export default function DashboardHome() {
       href: "/dashboard/add-class",
       icon: <BookOpen className="h-6 w-6 text-primary" />,
       description: "Create a new class section",
+      highlight: false,
     },
     {
       name: "Take Attendance",
       href: "/dashboard/attendance",
       icon: <Users className="h-6 w-6 text-primary" />,
       description: "Mark today's attendance",
+      highlight: true,
     },
     {
       name: "Manage Timetable",
       href: "/dashboard/timetable",
       icon: <Calendar className="h-6 w-6 text-primary" />,
       description: "Update class schedules",
+      highlight: false,
     },
     {
       name: "Collect Fees",
       href: "/dashboard/manage-fees",
       icon: <Wallet className="h-6 w-6 text-primary" />,
       description: "Record fee payments",
+      highlight: false,
     },
+  ]
+
+  const notifications = [
+    {
+      id: 1,
+      title: "Attendance marked for Class 10",
+      person: "Amit Kumar",
+      time: "10 minutes ago",
+      icon: <Users className="h-5 w-5 text-primary" />,
+      type: "attendance"
+    },
+    {
+      id: 2,
+      title: "New timetable created for Class 8",
+      person: "Priya Sharma",
+      time: "2 hours ago",
+      icon: <Calendar className="h-5 w-5 text-primary" />,
+      type: "schedule"
+    },
+    {
+      id: 3,
+      title: "Fee collected from 5 students",
+      person: "Raj Verma",
+      time: "Yesterday, 5:30 PM",
+      icon: <Wallet className="h-5 w-5 text-primary" />,
+      type: "payment"
+    },
+    {
+      id: 4,
+      title: "New student admission completed",
+      person: "Neha Gupta",
+      time: "Yesterday, 11:00 AM",
+      icon: <UserPlus className="h-5 w-5 text-primary" />,
+      type: "enrollment"
+    }
+  ]
+
+  const upcomingEvents = [
+    {
+      id: 1,
+      title: "Parent-Teacher Meeting",
+      date: "May 15, 2025",
+      time: "10:00 AM - 1:00 PM",
+      location: "School Auditorium"
+    },
+    {
+      id: 2,
+      title: "Science Exhibition",
+      date: "May 20, 2025",
+      time: "9:00 AM - 4:00 PM",
+      location: "School Grounds"
+    },
+    {
+      id: 3,
+      title: "Annual Sports Day",
+      date: "June 2, 2025",
+      time: "8:00 AM - 5:00 PM",
+      location: "Sports Complex"
+    }
   ]
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="">
-          {/* Banner Management Section */}
-          <section className="mb-12">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">School Banners</h2>
-              <div className="flex flex-wrap gap-2">
-                {banners.length > 0 && (
+        {/* Welcome Header */}
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Welcome back, {user?.displayName || 'Admin'}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              Here's what's happening with your school today
+            </p>
+          </div>
+          <div className="flex gap-3">
+
+            <Button
+              onClick={() => router.push("/dashboard/settings")}
+              className="h-10 text-sm"
+            >
+              School Settings
+            </Button>
+          </div>
+        </div>
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mb-10">
+          <TabsList className="grid grid-cols-3 max-w-md mb-6">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="activities">Activities</TabsTrigger>
+            <TabsTrigger value="events">Events</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-8">
+            {/* Banner Management Section */}
+            <section>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">School Announcements</h2>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">Manage important announcements and events</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {banners.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/dashboard/preview-banners")}
+                      className="flex items-center h-10 text-sm"
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      <span>View All</span>
+                    </Button>
+                  )}
                   <Button
-                    variant="outline"
-                    onClick={() => router.push("/dashboard/preview-banners")}
-                    className="flex items-center h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
+                    onClick={() => router.push("/dashboard/add-banner")}
+                    className="flex items-center h-10 text-sm"
                   >
-                    <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>View All</span>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <span>Add Banner</span>
                   </Button>
-                )}
-                <Button
-                  onClick={() => router.push("/dashboard/add-banner")}
-                  className="flex items-center h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
-                >
-                  <PlusCircle className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Add Banner</span>
+                </div>
+              </div>
+
+              <Card className="overflow-hidden shadow-md border-0 rounded-xl">
+                <CardContent className="p-0">
+                  <div className="w-full h-80 md:h-96 lg:h-[28rem]">
+                    <BannerSlideshow banners={banners} onColorsExtracted={handleColorExtraction} />
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Stats Grid */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-5">School Overview</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <Card className="shadow-sm border-0 rounded-xl overflow-hidden">
+                  <CardHeader className="pb-2 pt-5">
+                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Students</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalStudents}</p>
+                        <div className="flex items-center mt-1">
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 font-medium mr-1">+5</Badge>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">new this month</p>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                        <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-0 rounded-xl overflow-hidden">
+                  <CardHeader className="pb-2 pt-5">
+                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Classes</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalClasses}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Class 5 - 12</p>
+                      </div>
+                      <div className="h-12 w-12 bg-purple-50 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-0 rounded-xl overflow-hidden">
+                  <CardHeader className="pb-2 pt-5">
+                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Teachers</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalTeachers}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All subjects covered</p>
+                      </div>
+                      <div className="h-12 w-12 bg-amber-50 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
+                        <Users className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-0 rounded-xl overflow-hidden">
+                  <CardHeader className="pb-2 pt-5">
+                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Fee Collection</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white">₹{stats.feeCollection}</p>
+                        <div className="flex items-center mt-1">
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 font-medium mr-1">+12%</Badge>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">vs last month</p>
+                        </div>
+                      </div>
+                      <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                        <Wallet className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-0 rounded-xl overflow-hidden lg:col-span-2">
+                  <CardHeader className="pb-2 pt-5">
+                    <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Performance Metrics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="flex items-center gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">Average Attendance</p>
+                          <p className="text-sm font-bold">{stats.attendance}%</p>
+                        </div>
+                        <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+                          <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${stats.attendance}%` }}></div>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">Academic Performance</p>
+                          <p className="text-sm font-bold">{stats.performance}%</p>
+                        </div>
+                        <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full">
+                          <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${stats.performance}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
+
+            {/* Quick Actions */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-5">Quick Actions</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                {quickActions.map((action) => (
+                  <Link
+                    key={action.name}
+                    href={action.href}
+                  >
+                    <Card className={`h-full transition-all duration-300 hover:shadow-md border-0 rounded-xl ${
+                      action.highlight
+                        ? 'bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 border-l-4 border-l-primary'
+                        : 'bg-white dark:bg-gray-800'
+                    }`}>
+                      <CardContent className="p-5">
+                        <div className="mb-4 flex items-center justify-center h-12 w-12 bg-primary/10 rounded-full">
+                          {action.icon}
+                        </div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{action.name}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{action.description}</p>
+                        <div className="mt-4 text-primary dark:text-primary flex items-center text-sm font-medium">
+                          <span>Get started</span>
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="activities" className="space-y-8">
+            {/* Recent Activities */}
+            <section>
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Activities</h2>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Latest actions across your school</p>
+                </div>
+                <Button variant="ghost" onClick={() => router.push("/dashboard/all-activities")}>
+                  View all
+                  <ArrowUpRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
-            </div>
 
-            <Card className="overflow-hidden relative z-0">
-              <CardContent className="p-0">
-                <div className="h-[200px] sm:h-[300px] md:h-[400px]">
-                  <BannerSlideshow banners={banners} onColorsExtracted={handleColorExtraction} />
+              <div className="space-y-4">
+                {notifications.map((item) => (
+                  <Card key={item.id} className="shadow-sm border-0 rounded-xl hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start">
+                        <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mr-4 shrink-0">
+                          {item.icon}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                            <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                            <div className="flex items-center mt-1 sm:mt-0">
+                              <Badge
+                                className={`mr-2 px-2 py-0.5 text-xs capitalize ${
+                                  item.type === 'attendance' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' :
+                                  item.type === 'schedule' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' :
+                                  item.type === 'payment' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300' :
+                                  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                                }`}
+                              >
+                                {item.type}
+                              </Badge>
+                              <Clock className="h-3 w-3 text-gray-400 mr-1" />
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{item.time}</p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">By {item.person}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="events" className="space-y-8">
+            {/* Upcoming Events */}
+            <section>
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Upcoming Events</h2>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">School events scheduled for this month</p>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
+                <Button variant="outline" onClick={() => router.push("/dashboard/calendar")}>
+                  Full Calendar
+                  <Calendar className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Total Students</p>
-                    <p className="text-2xl font-bold">{stats.totalStudents}</p>
-                    <p className="text-sm text-muted-foreground mt-1">+5 new this month</p>
-                  </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Total Classes</p>
-                    <p className="text-2xl font-bold">{stats.totalClasses}</p>
-                    <p className="text-sm text-muted-foreground mt-1">Class 5 - 12</p>
-                  </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Teachers</p>
-                    <p className="text-2xl font-bold">{stats.totalTeachers}</p>
-                    <p className="text-sm text-muted-foreground mt-1">All subjects covered</p>
-                  </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Fee Collection</p>
-                    <p className="text-2xl font-bold">₹{stats.feeCollection}</p>
-                    <p className="text-sm text-muted-foreground mt-1">This month</p>
-                  </div>
-                  <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Wallet className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.name}
-                  href={action.href}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="mb-3">{action.icon}</div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">{action.name}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{action.description}</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          {/* Recent Activities */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Recent Activities</h2>
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mr-3">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-gray-900 dark:text-white">Attendance marked for Class 10</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">By Amit Kumar • 10 minutes ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mr-3">
-                      <Calendar className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-gray-900 dark:text-white">New timetable created for Class 8</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">By Priya Sharma • 2 hours ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mr-3">
-                      <Wallet className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-gray-900 dark:text-white">Fee collected from 5 students</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">By Raj Verma • Yesterday, 5:30 PM</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        </div>
+              <div className="grid md:grid-cols-3 gap-5">
+                {upcomingEvents.map((event) => (
+                  <Card key={event.id} className="shadow-sm border-0 rounded-xl overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 pb-3">
+                      <CardTitle className="text-lg font-semibold">{event.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm">
+                          <Calendar className="h-4 w-4 text-gray-500 mr-2" />
+                          <span className="font-medium">{event.date}</span>
+                        </div>
+                        <div className="flex items-center text-sm">
+                          <Clock className="h-4 w-4 text-gray-500 mr-2" />
+                          <span>{event.time}</span>
+                        </div>
+                        <div className="flex items-start text-sm">
+                          <Award className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>{event.location}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-0">
+                      <Button variant="outline" size="sm" className="w-full">
+                        View Details
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
