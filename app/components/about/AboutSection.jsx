@@ -1,3 +1,4 @@
+'use client'
 import TeamSection from "../TeamSection";
 
 export default function AboutSection() {
@@ -5,6 +6,11 @@ export default function AboutSection() {
     <div className="mt-0 rounded-b-lg border-x border-b bg-white p-6">
       <h2 className="text-xl font-semibold">Welcome to Present Sir</h2>
       <p className="text-sm text-gray-500">The ultimate school management solution</p>
+
+       {/* Team Section */}
+          <section className="mt-8">
+            <TeamSection />
+          </section>
 
       <div className="mt-6">
         <h3 className="text-lg font-medium">Our Story</h3>

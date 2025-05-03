@@ -1,3 +1,4 @@
+'use client'
 import { teamMembers } from "../../constants";
 import TeamCard from "./TeamCard";
 

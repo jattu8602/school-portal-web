@@ -10,14 +10,19 @@ A comprehensive web portal for schools to manage teachers and students. This pro
 - **Student Management**: Add students with roll numbers, names, usernames, and passwords
 - **Secure Authentication**: Firebase authentication for secure login and user management
 - **Database**: Firestore database for storing school, teacher, and student information
+- **Banner Management**: Manage school announcements
+- **Responsive Design**: Designed for all device sizes
 
 ## Tech Stack
 
 - **Frontend**: Next.js, React
 - **Authentication**: Firebase Authentication, NextAuth.js
 - **Database**: Firebase Firestore
+- **Media Storage**: Cloudinary
 - **Styling**: Tailwind CSS
 - **Form Handling**: React Hook Form
+- **Mobile App**: React Native with Expo
+- **State Management**: React Context API
 
 ## Getting Started
 
@@ -29,7 +34,19 @@ First, set up your Firebase project:
 4. Create Firestore Database
 5. Get your Firebase configuration and update the `.env` file
 
-Then, run the development server:
+Then, set up Cloudinary:
+
+1. Sign up for a Cloudinary account at [cloudinary.com](https://cloudinary.com/)
+2. From your dashboard, get your cloud name
+3. Create an upload preset:
+   - Go to Settings > Upload
+   - Scroll to "Upload presets" and click "Add upload preset"
+   - Set "Signing Mode" to "Unsigned"
+   - Add a folder name if desired
+   - Save the preset
+4. Copy the cloud name and upload preset name to your `.env.local` file
+
+Finally, run the development server:
 
 ```bash
 npm run dev
@@ -76,3 +93,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## PWA Support
+
+This project includes Progressive Web App (PWA) support, allowing users to install it as a native app on their devices:
+
+- Add to Home Screen on iOS
+- Install as app on Android
+- Desktop app on Windows/Mac/Linux
+
+The PWA features include:
+- Offline support via Service Worker
+- App icons and splash screens
+- Home screen installation
