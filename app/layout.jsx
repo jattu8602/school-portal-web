@@ -1,7 +1,6 @@
-
 import { Inter } from "next/font/google"
 import "@/app/globals.css"
-import InstallPWA from './components/InstallPWA'
+import PWAInstaller from './components/PWAInstaller'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,7 +23,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         {children}
-        <InstallPWA />
+        <PWAInstaller />
       </body>
     </html>
   )
