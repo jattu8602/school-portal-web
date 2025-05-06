@@ -10,20 +10,50 @@ export default function InstallPWA() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
+    // Check if the app is already installed in different ways
+    const checkIfInstalled = () => {
+      // Method 1: Check standalone mode
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        setIsInstalled(true)
+        return
+      }
+
+      // Method 2: Check if installed via iOS "Add to Home Screen"
+      if (window.navigator.standalone === true) {
+        setIsInstalled(true)
+        return
+      }
+
+      // Method 3: Check if app is in fullscreen mode (another indicator of installation)
+      if (window.matchMedia('(display-mode: fullscreen)').matches) {
+        setIsInstalled(true)
+        return
+      }
+    }
+
+    // Handle beforeinstallprompt event
     const handler = (e) => {
       e.preventDefault()
       setPromptInstall(e)
       setSupportsPWA(true)
     }
 
-    // Check if the app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-    }
-
+    checkIfInstalled()
     window.addEventListener('beforeinstallprompt', handler)
 
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    // Also check when app becomes visible (might have been installed in between)
+    window.addEventListener('visibilitychange', checkIfInstalled)
+
+    // Listen for app installation
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true)
+      console.log('PWA was installed')
+    })
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      window.removeEventListener('visibilitychange', checkIfInstalled)
+    }
   }, [])
 
   const onClick = (evt) => {
@@ -49,12 +79,15 @@ export default function InstallPWA() {
   }
 
   return (
-    <Button
-      onClick={onClick}
-      className="bg-primary-600 hover:bg-primary-700 text-white flex items-center"
-    >
-      <Download size={16} className="mr-2" />
-      Install App
-    </Button>
+    <div className="fixed bottom-5 right-5 z-50">
+      <Button
+        onClick={onClick}
+        className="bg-black hover:bg-gray-800 text-white rounded-full shadow-lg flex items-center justify-center w-12 h-12 md:w-auto md:h-auto md:px-4 md:py-2"
+        aria-label="Install App"
+      >
+        <Download size={20} className="md:mr-2" />
+        <span className="hidden md:inline">Install App</span>
+      </Button>
+    </div>
   )
 }
