@@ -147,7 +147,7 @@ export default function LandingPage() {
                     Go to Dashboard
                   </Button>
                 </Link>
-                <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-200 text-white" />
+                <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-800 text-white" />
                 </>
               ) : (
                 <>
@@ -161,7 +161,7 @@ export default function LandingPage() {
                       Learn More
                     </Button>
                   </Link>
-                  <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-200 text-white" />
+                  <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-800 text-white" />
                 </>
               )}
             </div>

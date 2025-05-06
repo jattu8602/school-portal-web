@@ -2,128 +2,97 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download, Check, ExternalLink } from 'lucide-react'
+import { Download } from 'lucide-react'
 
-export default function PermanentInstallButton({ className = "" }) {
+export default function PermanentInstallButton({ size = "md", className = "" }) {
   const [supportsPWA, setSupportsPWA] = useState(false)
   const [promptInstall, setPromptInstall] = useState(null)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [buttonText, setButtonText] = useState("Install App")
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') return;
+    const captureInstallPrompt = (e) => {
+      e.preventDefault()
+      setPromptInstall(e)
+      setSupportsPWA(true)
+    }
 
-    // Check installation status
     const checkIfInstalled = () => {
-      // Check if marked as installed in localStorage
-      if (localStorage.getItem('pwa-installed') === 'true') {
-        setIsInstalled(true)
-        setButtonText("Open App")
-        return true;
-      }
+      if (typeof window !== 'undefined') {
+        if (localStorage.getItem('pwa-installed') === 'true') {
+          setIsInstalled(true)
+          return true
+        }
 
-      // Standard install detection methods
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          window.matchMedia('(display-mode: fullscreen)').matches ||
-          window.matchMedia('(display-mode: minimal-ui)').matches ||
-          window.navigator.standalone === true) {
-        setIsInstalled(true)
-        setButtonText("Open App")
+        if (window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true ||
+            window.matchMedia('(display-mode: fullscreen)').matches ||
+            window.matchMedia('(display-mode: minimal-ui)').matches) {
+          setIsInstalled(true)
+          localStorage.setItem('pwa-installed', 'true')
+          return true
+        }
+      }
+      return false
+    }
+
+    const isCurrentlyInstalled = checkIfInstalled()
+
+    if (!isCurrentlyInstalled) {
+      window.addEventListener('beforeinstallprompt', captureInstallPrompt)
+      window.addEventListener('visibilitychange', checkIfInstalled)
+    }
+
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true)
+      if (typeof window !== 'undefined') {
         localStorage.setItem('pwa-installed', 'true')
-        return true;
       }
-
-      return false;
-    };
-
-    // Capture install prompt
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setPromptInstall(e);
-      setSupportsPWA(true);
-      setButtonText("Install App");
-    };
-
-    // Handle app installation
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setButtonText("Open App");
-      localStorage.setItem('pwa-installed', 'true');
-    };
-
-    // Initialize
-    const init = async () => {
-      checkIfInstalled();
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.addEventListener('appinstalled', handleAppInstalled);
-      setIsLoading(false);
-    };
-
-    init();
+    })
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
+      window.removeEventListener('beforeinstallprompt', captureInstallPrompt)
+      window.removeEventListener('visibilitychange', checkIfInstalled)
+    }
+  }, [])
 
-  const handleClick = () => {
-    if (isInstalled) {
-      // App is installed, try to open it
-      if ('standalone' in window.navigator && window.navigator.standalone === false) {
-        // iOS specific handling
-        alert("This app is already installed. Look for PresentSir on your home screen.");
-      } else {
-        // For Android/desktop, try to redirect to the app's URL
-        const appUrl = window.location.origin + '?source=pwa';
-        window.open(appUrl, '_blank');
-      }
-    } else if (promptInstall) {
-      // Show installation prompt
-      promptInstall.prompt();
+  const handleInstall = (evt) => {
+    evt.preventDefault()
 
-      promptInstall.userChoice.then(choiceResult => {
+    if (promptInstall) {
+      promptInstall.prompt()
+      promptInstall.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === 'accepted') {
-          setIsInstalled(true);
-          setButtonText("Open App");
-          localStorage.setItem('pwa-installed', 'true');
+          setIsInstalled(true)
+          localStorage.setItem('pwa-installed', 'true')
         }
-      });
+      })
     } else {
-      // No install prompt available, show manual instructions
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('force-pwa-install', 'true')
 
-      if (isIOS) {
-        alert('To install this app: tap the share button below, then "Add to Home Screen"');
-      } else {
-        alert('To install, open this page in Chrome and tap the menu button, then "Install app" or "Add to Home Screen"');
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+
+        if (isIOS) {
+          alert('To install this app: tap the share button below, then "Add to Home Screen"')
+        } else {
+          alert('To install, open this page in Chrome and tap the menu button, then "Install app" or "Add to Home Screen"')
+        }
       }
     }
-  };
+  }
 
-  if (isLoading) {
-    return null;
+  // Don't render button if installed
+  if (isInstalled) {
+    return null
   }
 
   return (
     <Button
-      onClick={handleClick}
-      className={`${className} flex items-center justify-center gap-2`}
-      variant={isInstalled ? "outline" : "default"}
+      onClick={handleInstall}
+      size={size}
+      className={className}
     >
-      {isInstalled ? (
-        <>
-          <ExternalLink size={16} />
-          <span>{buttonText}</span>
-        </>
-      ) : (
-        <>
-          <Download size={16} />
-          <span>{buttonText}</span>
-        </>
-      )}
+      <Download className="mr-2" size={18} /> Install App
     </Button>
-  );
+  )
 }

@@ -1,22 +1,27 @@
-const CACHE_NAME = 'presentSir-v1';
+// Service worker for PresentSir PWA
+
+const CACHE_NAME = 'presentsir-v1';
+
+// Add list of files to cache here
 const urlsToCache = [
   '/',
-  '/index.html',
   '/manifest.json',
-  '/present_sir_day-logo.jpg'
+  '/icons/present_sir_dark_logo.png',
+  '/icons/present_sir_dark_logo_192.png',
 ];
 
-// Install service worker
+// Install a service worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
+        console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
-// Activate and cleanup old caches
+// Update the service worker
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -32,27 +37,42 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Serve cached content when offline
+// Cache and return requests with offline functionality
 self.addEventListener('fetch', (event) => {
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // App shell style PWA - return index.html for navigate requests
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/');
+      })
+    );
+    return;
+  }
+
+  // Handle asset requests - cache first strategy
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Cache hit - return the response from the cache
+        // Cache hit - return response
         if (response) {
           return response;
         }
-
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then(
+        return fetch(event.request).then(
           (response) => {
             // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            if(!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
 
-            // Clone the response
+            // IMPORTANT: Clone the response. A response is a stream
+            // and because we want the browser to consume the response
+            // as well as the cache consuming the response, we need
+            // to clone it so we have two streams.
             const responseToCache = response.clone();
 
             caches.open(CACHE_NAME)
