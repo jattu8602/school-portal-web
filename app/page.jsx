@@ -141,11 +141,14 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               {user ? (
+                <>
                 <Link href="/dashboard">
                   <Button size="lg" className="text-lg w-full sm:w-auto">
                     Go to Dashboard
                   </Button>
                 </Link>
+                <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-200 text-white" />
+                </>
               ) : (
                 <>
                   <Link href="/auth/signup">
