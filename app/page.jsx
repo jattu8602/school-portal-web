@@ -13,6 +13,7 @@ import MobileAppShowcase from './components/MobileAppShowcase'
 import HeroImage from './components/HeroImage'
 import DeviceSpecifications from './components/DeviceSpecifications'
 import TeamSection from './components/TeamSection'
+import PermanentInstallButton from './components/PermanentInstallButton'
 
 export default function LandingPage() {
   const [user, setUser] = useState(null)
@@ -157,11 +158,12 @@ export default function LandingPage() {
                       Learn More
                     </Button>
                   </Link>
+                  <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-200 text-white" />
                 </>
               )}
             </div>
           </div>
-          <div className="flex justify-center mb-[-100px] mt-[-100px] md:mt-[1px] md:mb-[1px]">
+          <div className="flex justify-center mb-[-100px] mt-[-30px] md:mt-[1px] md:mb-[1px] ">
             <HeroImage />
           </div>
         </div>

@@ -1374,7 +1374,7 @@ export default function MobileAppShowcase() {
               <div className="absolute -right-32 sm:-right-40 top-16 sm:top-20 transform rotate-6 scale-75 sm:scale-100 w-60 sm:w-72 h-[400px] sm:h-[500px] bg-background border-6 sm:border-8 border-gray-800 rounded-[32px] sm:rounded-[40px] overflow-hidden shadow-xl">
                 <div className="h-6 bg-gray-800"></div>
                 <div className="p-3 sm:p-4 bg-primary text-primary-foreground flex justify-between items-center">
-                  <h3 className="font-semibold text-sm sm:text-base">Weekly Timetable</h3>
+                  <h3 className="font-semibold text-sm sm:text-base text-white">Weekly Timetable</h3>
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div className="p-3 sm:p-4 h-[calc(100%-96px)] overflow-y-auto space-y-3">
