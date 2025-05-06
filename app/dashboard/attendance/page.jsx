@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { Calendar, Check, Download, X, AlertCircle, Users } from "lucide-react"
+import { Calendar, Check, Download, X, AlertCircle, Users, FileText, FileSpreadsheet, Clock, BarChart3 } from "lucide-react"
 import { db, auth } from "../../../lib/firebase"
-import { collection, getDocs, query, where, doc, setDoc, getDoc, Timestamp, onSnapshot } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, setDoc, getDoc, Timestamp, onSnapshot, orderBy } from "firebase/firestore"
 import { onAuthStateChanged } from "firebase/auth"
 import { useRouter } from "next/navigation"
+import * as XLSX from 'xlsx'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 
 export default function AttendancePage() {
   const [selectedClass, setSelectedClass] = useState("")
@@ -23,9 +26,19 @@ export default function AttendancePage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [isAttendanceMarked, setIsAttendanceMarked] = useState(false)
   const [user, setUser] = useState(null)
+  const [schoolInfo, setSchoolInfo] = useState(null)
   const [statusMessage, setStatusMessage] = useState({ type: '', message: '' })
   const [attendanceListener, setAttendanceListener] = useState(null)
+  const [schoolStats, setSchoolStats] = useState({
+    totalStudents: 0,
+    totalPresent: 0,
+    totalAbsent: 0,
+    totalLate: 0,
+    totalUnrecorded: 0,
+    overallAttendanceRate: 0
+  })
   const router = useRouter()
   const today = new Date()
   today.setHours(0, 0, 0, 0) // Normalize today to start of day
@@ -35,6 +48,7 @@ export default function AttendancePage() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser)
+        fetchSchoolInfo(currentUser.uid)
         fetchClasses(currentUser.uid)
       } else {
         router.push("/auth/signin")
@@ -85,6 +99,18 @@ export default function AttendancePage() {
     return targetDate > today
   }
 
+  // Fetch school information
+  const fetchSchoolInfo = async (schoolId) => {
+    try {
+      const schoolDoc = await getDoc(doc(db, 'schools', schoolId))
+      if (schoolDoc.exists()) {
+        setSchoolInfo(schoolDoc.data())
+      }
+    } catch (err) {
+      console.error('Error fetching school info:', err)
+    }
+  }
+
   // Fetch classes for the school
   const fetchClasses = async (schoolId) => {
     try {
@@ -110,24 +136,49 @@ export default function AttendancePage() {
 
   // Fetch students for a specific class
   const fetchStudents = async (schoolId, classId) => {
-    setLoading(true)
     try {
+      setLoading(true)
+      console.log('Fetching students for class:', classId) // Debug log
+
+      // Query students for the specific class
       const studentsRef = collection(db, 'schools', schoolId, 'students')
-      const studentsQuery = query(studentsRef, where('classId', '==', classId))
+      const studentsQuery = query(
+        studentsRef,
+        where('classId', '==', classId)
+      )
       const studentsSnapshot = await getDocs(studentsQuery)
 
-      const studentsList = studentsSnapshot.docs.map(doc => ({
+      console.log('Students found:', studentsSnapshot.size) // Debug log
+
+      const studentsData = studentsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
 
-      setStudents(studentsList)
+      // Sort students by roll number
+      studentsData.sort((a, b) => Number(a.rollNo) - Number(b.rollNo))
+      setStudents(studentsData)
 
-      // After setting students, set up real-time listener for attendance
-      setupAttendanceListener(schoolId, classId, selectedDate)
+      // Initialize attendance data for all students in this class
+      const initialAttendanceData = {}
+      studentsData.forEach(student => {
+        initialAttendanceData[student.id] = {
+          status: 'unrecorded',
+          timestamp: null
+        }
+      })
+      setAttendanceData(initialAttendanceData)
+
+      // Update statistics for this specific class
+      const stats = calculateStatistics(initialAttendanceData, studentsData.length)
+      setStatistics(stats)
+
+      // Fetch attendance after getting students
+      await fetchAttendance(schoolId, classId, selectedDate)
     } catch (err) {
       console.error('Error fetching students:', err)
-      setStatusMessage({ type: 'error', message: 'Failed to load students' })
+      showToast('Failed to fetch students', 'error')
+    } finally {
       setLoading(false)
     }
   }
@@ -185,39 +236,50 @@ export default function AttendancePage() {
   // Fetch attendance data for specific date and class (used when there's no listener yet)
   const fetchAttendance = async (schoolId, classId, date) => {
     try {
-      const dateString = date.toISOString().split('T')[0]
-      const attendanceDocRef = doc(db, 'schools', schoolId, 'attendance', `${classId}_${dateString}`)
-      const attendanceDoc = await getDoc(attendanceDocRef)
+      const dateStr = formatDate(date)
+      console.log('Fetching attendance for:', dateStr) // Debug log
 
-      let attendanceMap = {}
+      const attendanceRef = doc(db, 'schools', schoolId, 'attendance', `${classId}_${dateStr}`)
+      const attendanceDoc = await getDoc(attendanceRef)
 
       if (attendanceDoc.exists()) {
         const data = attendanceDoc.data()
-        attendanceMap = data.records || {}
+        console.log('Found existing attendance:', data) // Debug log
+
+        // Update attendance data only for students in this class
+        const updatedAttendanceData = {}
+        Object.entries(data.attendance || {}).forEach(([studentId, record]) => {
+          // Only include attendance for students in the current class
+          if (students.some(student => student.id === studentId)) {
+            updatedAttendanceData[studentId] = record
+          }
+        })
+        setAttendanceData(updatedAttendanceData)
+        setIsAttendanceMarked(true)
+
+        // Update statistics with correct student count for this class
+        const stats = calculateStatistics(updatedAttendanceData, students.length)
+        setStatistics(stats)
+      } else {
+        console.log('No existing attendance found') // Debug log
+        // Initialize with unrecorded status for all students in this class
+        const initialAttendanceData = {}
+        students.forEach(student => {
+          initialAttendanceData[student.id] = {
+            status: 'unrecorded',
+            timestamp: null
+          }
+        })
+        setAttendanceData(initialAttendanceData)
+        setIsAttendanceMarked(false)
+
+        // Update statistics for unrecorded state
+        const stats = calculateStatistics(initialAttendanceData, students.length)
+        setStatistics(stats)
       }
-
-      // Initialize attendance for students without records
-      const updatedAttendanceMap = {}
-
-      // Only include active students in the attendance data
-      students.forEach(student => {
-        // If student has an existing record, use it; otherwise mark as unrecorded
-        updatedAttendanceMap[student.id] = attendanceMap[student.id] || {
-          status: 'unrecorded',
-          timestamp: null
-        }
-      })
-
-      setAttendanceData(updatedAttendanceMap)
-      calculateStatistics(updatedAttendanceMap, students.length)
-      setLoading(false)
-
-      // Set up real-time listener after initial fetch
-      setupAttendanceListener(schoolId, classId, date)
     } catch (err) {
       console.error('Error fetching attendance:', err)
-      setStatusMessage({ type: 'error', message: 'Failed to load attendance data' })
-      setLoading(false)
+      showToast('Failed to fetch attendance data', 'error')
     }
   }
 
@@ -231,76 +293,91 @@ export default function AttendancePage() {
       attendanceRate: 0
     }
 
-    // Count statuses only for active students
-    Object.values(data).forEach(record => {
-      if (record.status === 'present') stats.present++
-      else if (record.status === 'absent') stats.absent++
-      else if (record.status === 'late') stats.late++
-      else stats.unrecorded++
+    // Count statuses only for students in the current class
+    Object.entries(data).forEach(([studentId, record]) => {
+      // Verify the student belongs to the current class
+      if (students.some(student => student.id === studentId)) {
+        if (record.status === 'present') stats.present++
+        else if (record.status === 'absent') stats.absent++
+        else if (record.status === 'late') stats.late++
+      }
     })
 
-    // Make sure unrecorded count is accurate
+    // Calculate unrecorded as remaining students in this class
     stats.unrecorded = totalStudents - (stats.present + stats.absent + stats.late)
     if (stats.unrecorded < 0) stats.unrecorded = 0
 
-    // Calculate attendance rate based on present students
+    // Calculate attendance rate based on present students in this class
     stats.attendanceRate = totalStudents > 0
-      ? Math.round((stats.present / totalStudents) * 100)
+      ? Math.min(Math.round((stats.present / totalStudents) * 100), 100)
       : 0
 
-    setStatistics(stats)
+    return stats
   }
 
   // Handle class change
-  const handleClassChange = (e) => {
+  const handleClassChange = async (e) => {
     const classId = e.target.value
+    console.log('Class changed to:', classId) // Debug log
     setSelectedClass(classId)
-    if (user && classId) {
-      // Clean up existing listener if there is one
-      if (attendanceListener) {
-        attendanceListener()
-        setAttendanceListener(null)
-      }
-      fetchStudents(user.uid, classId)
+
+    if (classId) {
+      const schoolId = auth.currentUser.uid
+      // Clear previous data
+      setStudents([])
+      setAttendanceData({})
+      setStatistics({
+        present: 0,
+        absent: 0,
+        late: 0,
+        unrecorded: 0,
+        attendanceRate: 0
+      })
+      setIsAttendanceMarked(false)
+
+      // Fetch new data
+      await fetchStudents(schoolId, classId)
     }
   }
 
   // Handle date change
-  const handleDateChange = (e) => {
-    const newDate = new Date(e.target.value)
+  const handleDateChange = async (e) => {
+    const newDate = e.target.value
+    setSelectedDate(new Date(newDate))
 
-    // Prevent selecting future dates
-    if (isDateInFuture(newDate)) {
-      setStatusMessage({ type: 'error', message: 'Cannot mark attendance for future dates' })
-      setCalendarOpen(false)
-      return
-    }
+    if (selectedClass) {
+      const schoolId = auth.currentUser.uid
+      // Clear previous attendance data
+      setAttendanceData({})
+      setStatistics({
+        present: 0,
+        absent: 0,
+        late: 0,
+        unrecorded: students.length,
+        attendanceRate: 0
+      })
+      setIsAttendanceMarked(false)
 
-    setSelectedDate(newDate)
-    setCalendarOpen(false)
-
-    if (user && selectedClass) {
-      // Clean up existing listener if there is one
-      if (attendanceListener) {
-        attendanceListener()
-        setAttendanceListener(null)
-      }
-      fetchAttendance(user.uid, selectedClass, newDate)
+      // Fetch new attendance data
+      await fetchAttendance(schoolId, selectedClass, new Date(newDate))
     }
   }
 
   // Toggle attendance status for a student
   const toggleAttendance = (studentId) => {
+    if (isAttendanceMarked) return // Don't allow changes if already marked
+
     setAttendanceData(prev => {
-      const currentAttendance = prev[studentId] || { status: 'unrecorded', timestamp: null }
-      let newStatus = 'unrecorded'
+      const currentStatus = prev[studentId]?.status
+      let newStatus
 
       // Cycle through statuses: unrecorded -> present -> absent -> late -> unrecorded
-      if (currentAttendance.status === 'unrecorded') newStatus = 'present'
-      else if (currentAttendance.status === 'present') newStatus = 'absent'
-      else if (currentAttendance.status === 'absent') newStatus = 'late'
+      if (currentStatus === 'unrecorded') newStatus = 'present'
+      else if (currentStatus === 'present') newStatus = 'absent'
+      else if (currentStatus === 'absent') newStatus = 'late'
+      else newStatus = 'unrecorded'
 
-      const updated = {
+      const newData = {
         ...prev,
         [studentId]: {
           status: newStatus,
@@ -308,74 +385,157 @@ export default function AttendancePage() {
         }
       }
 
-      calculateStatistics(updated, students.length)
-      return updated
+      // Update statistics immediately
+      const stats = calculateStatistics(newData, students.length)
+      setStatistics(stats)
+
+      return newData
     })
   }
 
   // Mark all students as present
   const markAllPresent = () => {
-    const updated = { ...attendanceData }
+    if (isAttendanceMarked) return // Don't allow changes if already marked
+
+    const newAttendanceData = {}
     students.forEach(student => {
-      updated[student.id] = {
+      newAttendanceData[student.id] = {
         status: 'present',
         timestamp: Timestamp.now()
       }
     })
 
-    setAttendanceData(updated)
-    calculateStatistics(updated, students.length)
+    setAttendanceData(newAttendanceData)
+
+    // Update statistics
+    const stats = calculateStatistics(newAttendanceData, students.length)
+    setStatistics(stats)
   }
 
   // Save attendance to database
   const saveAttendance = async () => {
-    if (!user || !selectedClass) return
+    if (!selectedClass) {
+      showToast('Please select a class first', 'error')
+      return
+    }
 
-    setSaving(true)
-    setStatusMessage({ type: '', message: '' })
+    if (isAttendanceMarked) {
+      showToast('Attendance already marked for this date', 'warning')
+      return
+    }
 
     try {
-      const dateString = selectedDate.toISOString().split('T')[0]
-      const attendanceDocRef = doc(db, 'schools', user.uid, 'attendance', `${selectedClass}_${dateString}`)
+      setSaving(true)
+      const schoolId = auth.currentUser.uid
+      const dateStr = formatDate(selectedDate)
+      const attendanceRef = doc(db, 'schools', schoolId, 'attendance', `${selectedClass}_${dateStr}`)
 
-      await setDoc(attendanceDocRef, {
-        class: selectedClass,
+      // Verify no duplicate attendance
+      const existingAttendance = await getDoc(attendanceRef)
+      if (existingAttendance.exists()) {
+        showToast('Attendance already marked for this date', 'error')
+        return
+      }
+
+      // Prepare attendance data only for students in this class
+      const attendanceDataToSave = {
+        attendance: attendanceData,
         date: Timestamp.fromDate(selectedDate),
-        records: attendanceData,
-        updatedAt: Timestamp.now()
-      })
+        classId: selectedClass,
+        className: getClassName(selectedClass),
+        totalStudents: students.length, // Use actual number of students in this class
+        markedBy: auth.currentUser.email,
+        markedAt: Timestamp.now(),
+        statistics: statistics
+      }
 
-      setStatusMessage({ type: 'success', message: 'Attendance saved successfully' })
+      await setDoc(attendanceRef, attendanceDataToSave)
+      setIsAttendanceMarked(true)
+      showToast('Attendance saved successfully', 'success')
     } catch (err) {
       console.error('Error saving attendance:', err)
-      setStatusMessage({ type: 'error', message: 'Failed to save attendance' })
+      showToast('Failed to save attendance', 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  // Export attendance as CSV
-  const exportAttendance = () => {
+  // Export attendance as Excel
+  const exportAttendanceExcel = () => {
     if (students.length === 0) return
 
     const dateStr = selectedDate.toISOString().split('T')[0]
     const className = classes.find(c => c.id === selectedClass)?.name || 'Class'
+    const section = classes.find(c => c.id === selectedClass)?.section || ''
+    const classTeacher = classes.find(c => c.id === selectedClass)?.classTeacher || ''
 
-    let csvContent = "Roll No,Name,Status,Date\n"
+    // Prepare data for Excel
+    const data = [
+      ['School Name:', schoolInfo?.name || ''],
+      ['Class:', `${className} ${section}`],
+      ['Class Teacher:', classTeacher],
+      ['Date:', formatDate(selectedDate)],
+      [], // Empty row for spacing
+      ['Roll No', 'Name', 'Status', 'Time']
+    ]
 
+    // Add student data
     students.forEach(student => {
       const status = attendanceData[student.id]?.status || 'unrecorded'
-      csvContent += `${student.rollNo},"${student.name}",${status},${dateStr}\n`
+      const time = attendanceData[student.id]?.timestamp ?
+        new Date(attendanceData[student.id].timestamp.toDate()).toLocaleTimeString() : ''
+      data.push([student.rollNo, student.name, status, time])
     })
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${className}_attendance_${dateStr}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance')
+
+    // Save file
+    XLSX.writeFile(wb, `${className}_${section}_attendance_${dateStr}.xlsx`)
+  }
+
+  // Export attendance as PDF
+  const exportAttendancePDF = () => {
+    if (students.length === 0) return
+
+    const dateStr = selectedDate.toISOString().split('T')[0]
+    const className = classes.find(c => c.id === selectedClass)?.name || 'Class'
+    const section = classes.find(c => c.id === selectedClass)?.section || ''
+    const classTeacher = classes.find(c => c.id === selectedClass)?.classTeacher || ''
+
+    // Create PDF document
+    const doc = new jsPDF()
+
+    // Add header information
+    doc.setFontSize(16)
+    doc.text(schoolInfo?.name || '', 14, 15)
+    doc.setFontSize(12)
+    doc.text(`Class: ${className} ${section}`, 14, 25)
+    doc.text(`Class Teacher: ${classTeacher}`, 14, 35)
+    doc.text(`Date: ${formatDate(selectedDate)}`, 14, 45)
+
+    // Prepare table data
+    const tableData = students.map(student => {
+      const status = attendanceData[student.id]?.status || 'unrecorded'
+      const time = attendanceData[student.id]?.timestamp ?
+        new Date(attendanceData[student.id].timestamp.toDate()).toLocaleTimeString() : ''
+      return [student.rollNo, student.name, status, time]
+    })
+
+    // Add table
+    doc.autoTable({
+      startY: 55,
+      head: [['Roll No', 'Name', 'Status', 'Time']],
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [41, 128, 185] }
+    })
+
+    // Save PDF
+    doc.save(`${className}_${section}_attendance_${dateStr}.pdf`)
   }
 
   // Get class name from class ID
@@ -399,12 +559,102 @@ export default function AttendancePage() {
     setCalendarOpen(!calendarOpen)
   }
 
+  // Add this new function to calculate school-wide statistics
+  const calculateSchoolStats = async (schoolId) => {
+    try {
+      const classesRef = collection(db, 'schools', schoolId, 'classes')
+      const classesSnapshot = await getDocs(classesRef)
+      let totalStudents = 0
+      let totalPresent = 0
+      let totalAbsent = 0
+      let totalLate = 0
+      let totalUnrecorded = 0
+
+      // Get attendance for each class
+      for (const classDoc of classesSnapshot.docs) {
+        const classId = classDoc.id
+        const dateStr = formatDate(selectedDate)
+        const attendanceRef = doc(db, 'schools', schoolId, 'attendance', `${classId}_${dateStr}`)
+        const attendanceDoc = await getDoc(attendanceRef)
+
+        // Get total students in class first
+        const studentsRef = collection(db, 'schools', schoolId, 'students')
+        const studentsQuery = query(studentsRef, where('classId', '==', classId))
+        const studentsSnapshot = await getDocs(studentsQuery)
+        const classTotalStudents = studentsSnapshot.size
+        totalStudents += classTotalStudents
+
+        if (attendanceDoc.exists()) {
+          const data = attendanceDoc.data()
+          const attendance = data.attendance || {}
+
+          // Count attendance statuses
+          Object.values(attendance).forEach(record => {
+            if (record.status === 'present') totalPresent++
+            else if (record.status === 'absent') totalAbsent++
+            else if (record.status === 'late') totalLate++
+          })
+        }
+      }
+
+      // Calculate unrecorded as remaining students
+      totalUnrecorded = totalStudents - (totalPresent + totalAbsent + totalLate)
+      if (totalUnrecorded < 0) totalUnrecorded = 0
+
+      // Calculate overall attendance rate
+      const overallAttendanceRate = totalStudents > 0
+        ? Math.min(Math.round((totalPresent / totalStudents) * 100), 100)
+        : 0
+
+      setSchoolStats({
+        totalStudents,
+        totalPresent,
+        totalAbsent,
+        totalLate,
+        totalUnrecorded,
+        overallAttendanceRate
+      })
+    } catch (err) {
+      console.error('Error calculating school stats:', err)
+    }
+  }
+
+  // Update useEffect to calculate school stats when date changes
+  useEffect(() => {
+    if (user) {
+      calculateSchoolStats(user.uid)
+    }
+  }, [selectedDate, user])
+
   return (
     <div className="p-6">
       <div>
         <h1 className="text-2xl font-semibold">Attendance</h1>
         <p className="text-sm text-gray-500">Mark and track student attendance records.</p>
       </div>
+
+      {schoolInfo && (
+        <div className="mt-4 p-4 bg-white rounded-lg border">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">School Name</p>
+              <p className="font-medium">{schoolInfo.name}</p>
+            </div>
+            {selectedClass && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-500">Class</p>
+                  <p className="font-medium">{getClassName(selectedClass)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Class Teacher</p>
+                  <p className="font-medium">{classes.find(c => c.id === selectedClass)?.classTeacher || 'Not Assigned'}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {statusMessage.message && (
         <div className={`mt-4 p-3 rounded-md flex items-center ${statusMessage.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
@@ -480,14 +730,24 @@ export default function AttendancePage() {
             </>
           )}
         </button>
-        <button
-          className="flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
-          onClick={exportAttendance}
-          disabled={loading || students.length === 0}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+            onClick={exportAttendanceExcel}
+            disabled={loading || students.length === 0}
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Export Excel
+          </button>
+          <button
+            className="flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+            onClick={exportAttendancePDF}
+            disabled={loading || students.length === 0}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -495,60 +755,153 @@ export default function AttendancePage() {
           <div className="animate-spin h-8 w-8 border-4 border-gray-200 rounded-full border-t-gray-800"></div>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-4">
-          <div className="col-span-1 rounded-lg border bg-white p-6">
-            <h2 className="text-lg font-semibold">Statistics</h2>
-            <p className="text-xs text-gray-500">{formatDate(selectedDate)}</p>
+        <div className="mt-6 grid grid-cols-1 gap-6">
+          {/* School-wide Statistics */}
+          <div className="rounded-lg border bg-white p-6">
+            <h2 className="text-lg font-semibold mb-4">School-wide Attendance Statistics</h2>
+            <p className="text-sm text-gray-500 mb-6">{formatDate(selectedDate)}</p>
 
-            <div className="mt-4 flex items-center justify-between">
-              <div>
-                <p className="text-3xl font-bold">{statistics.attendanceRate}%</p>
-                <p className="text-xs text-gray-500">Attendance Rate</p>
-              </div>
-              <div className="relative h-16 w-16">
-                <div className={`h-16 w-16 rounded-full border-4 ${statistics.attendanceRate < 50 ? 'border-red-100' : 'border-green-100'}`}></div>
-                <div className="absolute inset-0 flex items-center justify-center text-sm font-medium">
-                  {statistics.present}/{students.length}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Students</p>
+                    <p className="text-2xl font-bold">{schoolStats.totalStudents}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-green-600">Present</p>
+                    <p className="text-2xl font-bold text-green-700">{schoolStats.totalPresent}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <Check className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-red-600">Absent</p>
+                    <p className="text-2xl font-bold text-red-700">{schoolStats.totalAbsent}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <X className="h-6 w-6 text-red-600" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="rounded-md bg-green-50 p-3">
-                <p className="text-center text-lg font-semibold text-green-600">{statistics.present}</p>
-                <p className="text-center text-xs font-medium uppercase text-green-600">Present</p>
-              </div>
-              <div className="rounded-md bg-red-50 p-3">
-                <p className="text-center text-lg font-semibold text-red-600">{statistics.absent}</p>
-                <p className="text-center text-xs font-medium uppercase text-red-600">Absent</p>
-              </div>
-              <div className="rounded-md bg-yellow-50 p-3">
-                <p className="text-center text-lg font-semibold text-yellow-600">{statistics.late}</p>
-                <p className="text-center text-xs font-medium uppercase text-yellow-600">Late</p>
-              </div>
-              <div className="rounded-md bg-gray-50 p-3">
-                <p className="text-center text-lg font-semibold text-gray-600">{statistics.unrecorded}</p>
-                <p className="text-center text-xs font-medium uppercase text-gray-600">Unrecorded</p>
-              </div>
-            </div>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-yellow-600">Late</p>
+                    <p className="text-2xl font-bold text-yellow-700">{schoolStats.totalLate}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-yellow-600" />
+                  </div>
+                </div>
 
-            <div className="mt-6 space-y-2">
-              <div className="flex items-center">
-                <div className="mr-2 h-3 w-3 rounded-full bg-green-500"></div>
-                <span className="text-xs">Present</span>
-              </div>
-              <div className="flex items-center">
-                <div className="mr-2 h-3 w-3 rounded-full bg-red-500"></div>
-                <span className="text-xs">Absent</span>
-              </div>
-              <div className="flex items-center">
-                <div className="mr-2 h-3 w-3 rounded-full bg-yellow-500"></div>
-                <span className="text-xs">Late</span>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-600">Unrecorded</p>
+                    <p className="text-2xl font-bold text-gray-700">{schoolStats.totalUnrecorded}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-blue-600">Attendance Rate</p>
+                    <p className="text-2xl font-bold text-blue-700">{schoolStats.overallAttendanceRate}%</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="col-span-1 lg:col-span-3 rounded-lg border bg-white p-6">
+          {/* Class-specific Statistics */}
+          <div className="rounded-lg border bg-white p-6">
+            <h2 className="text-lg font-semibold mb-4">Class Attendance Statistics</h2>
+            <p className="text-sm text-gray-500 mb-6">{formatDate(selectedDate)} - {getClassName(selectedClass)}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Students</p>
+                    <p className="text-2xl font-bold">{students.length}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <Users className="h-6 w-6 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-green-600">Present</p>
+                    <p className="text-2xl font-bold text-green-700">{statistics.present}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <Check className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-red-600">Absent</p>
+                    <p className="text-2xl font-bold text-red-700">{statistics.absent}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <X className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-yellow-600">Late</p>
+                    <p className="text-2xl font-bold text-yellow-700">{statistics.late}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-yellow-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-600">Unrecorded</p>
+                    <p className="text-2xl font-bold text-gray-700">{statistics.unrecorded}</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                    <AlertCircle className="h-6 w-6 text-gray-600" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-blue-600">Attendance Rate</p>
+                    <p className="text-2xl font-bold text-blue-700">{statistics.attendanceRate}%</p>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Attendance Sheet */}
+          <div className="rounded-lg border bg-white p-6">
             <h2 className="text-lg font-semibold">Attendance Sheet</h2>
             <p className="text-xs text-gray-500">Click to toggle attendance status</p>
 

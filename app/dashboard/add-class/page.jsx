@@ -127,15 +127,38 @@ export default function ClassesPage() {
     }
   }
 
-  const openAddStudentsModal = (classData) => {
+  const openAddStudentsModal = async (classData) => {
     setSelectedClass(classData)
 
-    // Initialize student form with the first roll number
-    const startRollNo = 1
-    setStudentFormData({
-      startRollNo,
-      students: [{ name: '', rollNo: startRollNo, username: '', gender: 'male' }]
-    })
+    try {
+      // Fetch existing students to determine the next roll number
+      const existingStudentsRef = collection(db, 'schools', auth.currentUser.uid, 'students');
+      const existingStudentsQuery = query(existingStudentsRef, where('classId', '==', classData.id));
+      const existingStudentsSnapshot = await getDocs(existingStudentsQuery);
+
+      // Extract all existing roll numbers
+      const existingRollNumbers = existingStudentsSnapshot.docs.map(doc => doc.data().rollNo);
+
+      // Calculate the next available roll number
+      let startRollNo = 1;
+      if (existingRollNumbers.length > 0) {
+        // Find the maximum roll number and add 1
+        startRollNo = Math.max(...existingRollNumbers) + 1;
+      }
+
+      // Initialize student form with the next available roll number
+      setStudentFormData({
+        startRollNo,
+        students: [{ name: '', rollNo: startRollNo, username: '', gender: 'male' }]
+      })
+    } catch (err) {
+      console.error('Error fetching existing students:', err);
+      // Fallback to starting with roll number 1
+      setStudentFormData({
+        startRollNo: 1,
+        students: [{ name: '', rollNo: 1, username: '', gender: 'male' }]
+      })
+    }
 
     setShowAddStudentsModal(true)
   }
@@ -152,15 +175,27 @@ export default function ClassesPage() {
   }
 
   const handleStudentChange = (index, field, value) => {
-    const updatedStudents = [...studentFormData.students]
+    // When changing roll number, check if it's already taken by another student in the form
+    if (field === 'rollNo') {
+      const rollNo = parseInt(value);
+      const isDuplicate = studentFormData.students.some(
+        (student, i) => i !== index && student.rollNo === rollNo
+      );
+
+      if (isDuplicate) {
+        showToast(`Roll number ${rollNo} is already used in this form. Each student needs a unique roll number.`, 'warning');
+      }
+    }
+
+    const updatedStudents = [...studentFormData.students];
     updatedStudents[index] = {
       ...updatedStudents[index],
       [field]: field === 'rollNo' ? parseInt(value) : value
-    }
+    };
     setStudentFormData(prev => ({
       ...prev,
       students: updatedStudents
-    }))
+    }));
   }
 
   const removeStudentRow = (index) => {
@@ -189,46 +224,38 @@ export default function ClassesPage() {
     try {
       if (!user || !selectedClass) return
 
-      // Check for duplicate roll numbers
-      const rollNumbers = studentFormData.students.map(s => s.rollNo);
-      const uniqueRollNumbers = [...new Set(rollNumbers)];
+      // Check for duplicate roll numbers within the form
+      const rollNumbers = studentFormData.students.map(s => s.rollNo)
+      const uniqueRollNumbers = [...new Set(rollNumbers)]
 
       if (rollNumbers.length !== uniqueRollNumbers.length) {
-        showToast('Each student must have a unique roll number', 'error');
-        return;
+        showToast('Each student must have a unique roll number', 'error')
+        return
       }
 
-      // Sort by roll number to ensure sequential validation
-      const sortedStudents = [...studentFormData.students].sort((a, b) => a.rollNo - b.rollNo);
+      // Check for duplicate roll numbers in the class
+      const existingStudentsRef = collection(db, 'schools', user.uid, 'students')
+      const existingStudentsQuery = query(
+        existingStudentsRef,
+        where('classId', '==', selectedClass.id)
+      )
+      const existingStudentsSnapshot = await getDocs(existingStudentsQuery)
+      const existingRollNumbers = existingStudentsSnapshot.docs.map(doc => doc.data().rollNo)
 
-      // Check if roll numbers are sequential
-      for (let i = 0; i < sortedStudents.length - 1; i++) {
-        if (sortedStudents[i + 1].rollNo !== sortedStudents[i].rollNo + 1) {
-          if (!confirm('Warning: Roll numbers are not sequential. Continue anyway?')) {
-            return;
-          }
-          break;
-        }
-      }
+      // Check for conflicts with existing roll numbers
+      const hasConflict = studentFormData.students.some(student =>
+        existingRollNumbers.includes(student.rollNo)
+      )
 
-      // Check if any roll numbers already exist in this class
-      const existingStudentsRef = collection(db, 'schools', user.uid, 'students');
-      const existingStudentsQuery = query(existingStudentsRef, where('classId', '==', selectedClass.id));
-      const existingStudentsSnapshot = await getDocs(existingStudentsQuery);
-
-      const existingRollNumbers = existingStudentsSnapshot.docs.map(doc => doc.data().rollNo);
-      const conflictingRollNumbers = rollNumbers.filter(roll => existingRollNumbers.includes(roll));
-
-      if (conflictingRollNumbers.length > 0) {
-        if (!confirm(`Roll numbers ${conflictingRollNumbers.join(', ')} already exist in this class. Overwrite existing students?`)) {
-          return;
-        }
+      if (hasConflict) {
+        showToast('Some roll numbers already exist in this class', 'error')
+        return
       }
 
       // Add students to Firestore
-      let successCount = 0;
-      let maleCount = 0;
-      let femaleCount = 0;
+      let successCount = 0
+      let maleCount = 0
+      let femaleCount = 0
 
       for (const student of studentFormData.students) {
         if (!student.name) continue // Skip empty names
@@ -238,14 +265,15 @@ export default function ClassesPage() {
 
         // Count gender for stats
         if (student.gender === 'male') {
-          maleCount++;
+          maleCount++
         } else if (student.gender === 'female') {
-          femaleCount++;
+          femaleCount++
         }
 
         try {
           // Create student document with classId and className
-          await setDoc(doc(db, 'schools', user.uid, 'students', student.rollNo.toString()), {
+          const studentId = `${selectedClass.id}_${student.rollNo}`
+          await setDoc(doc(db, 'schools', user.uid, 'students', studentId), {
             name: student.name,
             rollNo: student.rollNo,
             username: username,
@@ -255,69 +283,98 @@ export default function ClassesPage() {
             className: selectedClass.name,
             section: selectedClass.section,
             createdAt: serverTimestamp()
-          });
-          successCount++;
+          })
+          successCount++
         } catch (err) {
-          console.error(`Error adding student ${student.name}:`, err);
-          showToast(`Failed to add student ${student.name}: ${err.message}`, 'error');
+          console.error(`Error adding student ${student.name}:`, err)
+          showToast(`Failed to add student ${student.name}: ${err.message}`, 'error')
         }
       }
 
       // Update class stats
       try {
-        const classRef = doc(db, 'schools', user.uid, 'classes', selectedClass.id);
-        const classDoc = await getDoc(classRef);
+        const classRef = doc(db, 'schools', user.uid, 'classes', selectedClass.id)
+        const classDoc = await getDoc(classRef)
 
         if (classDoc.exists()) {
-          const classData = classDoc.data();
+          const classData = classDoc.data()
           await setDoc(classRef, {
             ...classData,
             totalStudents: (classData.totalStudents || 0) + successCount,
             boys: (classData.boys || 0) + maleCount,
             girls: (classData.girls || 0) + femaleCount,
             updatedAt: serverTimestamp()
-          });
+          }, { merge: true })
         }
       } catch (err) {
-        console.error('Error updating class stats:', err);
-        showToast('Failed to update class statistics', 'warning');
+        console.error('Error updating class stats:', err)
+        showToast('Failed to update class statistics', 'warning')
       }
 
       // Close modal and refresh data
-      setShowAddStudentsModal(false);
-      fetchClasses(user.uid);
-      showToast(`Added ${successCount} students to ${selectedClass.name} ${selectedClass.section}`, 'success');
+      setShowAddStudentsModal(false)
+      fetchClasses(user.uid)
+      showToast(`Added ${successCount} students to ${selectedClass.name} ${selectedClass.section}`, 'success')
     } catch (err) {
-      console.error('Error adding students:', err);
-      showToast(`Failed to add students: ${err.message}`, 'error');
+      console.error('Error adding students:', err)
+      showToast(`Failed to add students: ${err.message}`, 'error')
     }
   }
 
   const deleteClass = async (classId) => {
-    if (!confirm('Are you sure you want to delete this class? This will also remove all students associated with this class.')) return;
+    if (!confirm('Are you sure you want to delete this class? This will also remove all students associated with this class.')) return
 
     try {
       // Delete the class
-      await deleteDoc(doc(db, 'schools', user.uid, 'classes', classId));
+      await deleteDoc(doc(db, 'schools', user.uid, 'classes', classId))
 
       // Find and delete students in this class
-      const studentsRef = collection(db, 'schools', user.uid, 'students');
-      const studentsQuery = query(studentsRef, where('classId', '==', classId));
-      const studentsSnapshot = await getDocs(studentsQuery);
+      const studentsRef = collection(db, 'schools', user.uid, 'students')
+      const studentsQuery = query(studentsRef, where('classId', '==', classId))
+      const studentsSnapshot = await getDocs(studentsQuery)
 
       // Delete each student
       const deletePromises = studentsSnapshot.docs.map(doc =>
         deleteDoc(doc.ref)
-      );
+      )
 
-      await Promise.all(deletePromises);
+      // Get all teachers
+      const teachersRef = collection(db, 'schools', user.uid, 'teachers')
+      const teachersSnapshot = await getDocs(teachersRef)
+
+      // Update each teacher to remove this class from their subjects
+      const teacherUpdatePromises = teachersSnapshot.docs.map(async (teacherDoc) => {
+        const teacherData = teacherDoc.data()
+        if (teacherData.subjects) {
+          // Filter out the deleted class from subjects
+          const updatedSubjects = teacherData.subjects.filter(
+            subject => subject.classId !== classId
+          )
+
+          // Update the classSubjects map
+          const classSubjects = {}
+          updatedSubjects.forEach(subject => {
+            classSubjects[subject.classId] = subject.subjectName
+          })
+
+          // Update teacher document
+          await setDoc(teacherDoc.ref, {
+            subjects: updatedSubjects,
+            classSubjects: classSubjects,
+            updatedAt: serverTimestamp()
+          }, { merge: true })
+        }
+      })
+
+      // Wait for all operations to complete
+      await Promise.all([...deletePromises, ...teacherUpdatePromises])
 
       // Refresh classes
-      fetchClasses(user.uid);
-      showToast('Class deleted successfully', 'success');
+      fetchClasses(user.uid)
+      showToast('Class deleted successfully', 'success')
     } catch (err) {
-      console.error('Error deleting class:', err);
-      showToast(`Failed to delete class: ${err.message}`, 'error');
+      console.error('Error deleting class:', err)
+      showToast(`Failed to delete class: ${err.message}`, 'error')
     }
   }
 
