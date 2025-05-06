@@ -4,7 +4,7 @@ import "@/app/globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "PresentSir - Smart School Attendance Management",
+  title: "PresentSir",
   description:
     "Streamline attendance, manage classes, track performance, and more with our comprehensive school management system.",
 }
