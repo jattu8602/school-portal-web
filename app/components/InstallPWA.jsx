@@ -21,21 +21,46 @@ export default function InstallPWA() {
 
     // Check if the app is already installed in different ways
     const checkIfInstalled = () => {
+      // First check localStorage to see if we previously marked it as installed
+      if (typeof window !== 'undefined' && localStorage.getItem('pwa-installed') === 'true') {
+        setIsInstalled(true)
+        return true
+      }
+
       // Method 1: Check standalone mode
       if (window.matchMedia('(display-mode: standalone)').matches) {
         setIsInstalled(true)
+        // Save the status so we remember for next time
+        localStorage.setItem('pwa-installed', 'true')
         return true
       }
 
       // Method 2: Check if installed via iOS "Add to Home Screen"
       if (window.navigator.standalone === true) {
         setIsInstalled(true)
+        localStorage.setItem('pwa-installed', 'true')
         return true
       }
 
       // Method 3: Check if app is in fullscreen mode (another indicator of installation)
       if (window.matchMedia('(display-mode: fullscreen)').matches) {
         setIsInstalled(true)
+        localStorage.setItem('pwa-installed', 'true')
+        return true
+      }
+
+      // Method 4: Check minimal-ui mode (another PWA display mode)
+      if (window.matchMedia('(display-mode: minimal-ui)').matches) {
+        setIsInstalled(true)
+        localStorage.setItem('pwa-installed', 'true')
+        return true
+      }
+
+      // Method 5: Check if this is a PWA context based on URL
+      if (window.location.href.includes('?source=pwa') ||
+          document.referrer.includes('?source=pwa')) {
+        setIsInstalled(true)
+        localStorage.setItem('pwa-installed', 'true')
         return true
       }
 
@@ -44,6 +69,7 @@ export default function InstallPWA() {
 
     // Force show the button if requested in localStorage
     if (typeof window !== 'undefined') {
+      // Check if the user requested to explicitly show the install button
       const shouldForce = localStorage.getItem('force-pwa-install') === 'true'
       setForceShow(shouldForce)
 
@@ -67,6 +93,10 @@ export default function InstallPWA() {
     // Listen for app installation
     window.addEventListener('appinstalled', () => {
       setIsInstalled(true)
+      // Mark as installed in localStorage for future visits
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pwa-installed', 'true')
+      }
       console.log('PWA was installed')
     })
 
@@ -88,6 +118,7 @@ export default function InstallPWA() {
         if (choiceResult.outcome === 'accepted') {
           console.log('User accepted the install prompt')
           setIsInstalled(true)
+          localStorage.setItem('pwa-installed', 'true')
         } else {
           console.log('User dismissed the install prompt')
         }
@@ -110,6 +141,14 @@ export default function InstallPWA() {
         // Refresh to trigger the browser's install prompt
         window.location.reload()
       }
+    }
+  }
+
+  // Provide a way for users to reset the installation status (for development)
+  const resetInstallStatus = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pwa-installed')
+      window.location.reload()
     }
   }
 
