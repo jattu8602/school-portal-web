@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Download } from 'lucide-react'
+import { Download, RefreshCw } from 'lucide-react'
 
 export default function PermanentInstallButton({ size = "md", className = "" }) {
   const [supportsPWA, setSupportsPWA] = useState(false)
   const [promptInstall, setPromptInstall] = useState(null)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [showResetButton, setShowResetButton] = useState(false)
 
   useEffect(() => {
     const captureInstallPrompt = (e) => {
@@ -18,7 +19,22 @@ export default function PermanentInstallButton({ size = "md", className = "" }) 
 
     const checkIfInstalled = () => {
       if (typeof window !== 'undefined') {
+        // Check if it's marked as installed but verify with actual display mode
         if (localStorage.getItem('pwa-installed') === 'true') {
+          // If it's marked as installed but not in standalone mode,
+          // the user might have uninstalled it
+          const isActuallyInstalled =
+            window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true ||
+            window.matchMedia('(display-mode: fullscreen)').matches ||
+            window.matchMedia('(display-mode: minimal-ui)').matches;
+
+          if (!isActuallyInstalled) {
+            // The app is not actually installed, show the reset button
+            setShowResetButton(true);
+            return false;
+          }
+
           setIsInstalled(true)
           return true
         }
@@ -81,7 +97,29 @@ export default function PermanentInstallButton({ size = "md", className = "" }) 
     }
   }
 
-  // Don't render button if installed
+  const resetInstallStatus = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pwa-installed')
+      setIsInstalled(false)
+      setShowResetButton(false)
+      window.location.reload() // Reload to allow browser to trigger install prompt again
+    }
+  }
+
+  // If the reset button should be shown, show it instead of nothing
+  if (showResetButton) {
+    return (
+      <Button
+        onClick={resetInstallStatus}
+        size={size}
+        className={className}
+      >
+        <RefreshCw className="mr-2" size={18} /> Reinstall App
+      </Button>
+    )
+  }
+
+  // Don't render button if installed and not showing reset button
   if (isInstalled) {
     return null
   }
