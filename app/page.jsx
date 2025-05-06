@@ -163,7 +163,7 @@ export default function LandingPage() {
               )}
             </div>
           </div>
-          <div className="flex justify-center">
+          <div className="flex justify-center mb-[-100px] mt-[-100px] md:mt-[1px] md:mb-[1px]">
             <HeroImage />
           </div>
         </div>
@@ -760,26 +760,6 @@ export default function LandingPage() {
             </div>
           </div>
         </footer>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     </div>
   )
