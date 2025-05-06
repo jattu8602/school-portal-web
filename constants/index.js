@@ -6,7 +6,7 @@ export const teamMembers = [
     photo: "/team/Ajay_Singh_Thakur.jpg",
     links: {
       github: "https://github.com/Ajayysinghh03",
-      instagram: "https://instagram.com/jatin_insta",
+      instagram: "https://instagram.com/ajay___singh__03",
       linkedin: "https://www.linkedin.com/in/ajayysinghh",
       twitter: "https://twitter.com/iAJAYY42"
     }
@@ -39,7 +39,7 @@ export const teamMembers = [
     photo: "/team/Taniya_Patel.jpg",
     links: {
       github: "https://github.com/taniyaapatel",
-      instagram: "https://instagram.com/jatin_insta",
+      instagram: "https://instagram.com/taniyaa.09",
       linkedin: "https://www.linkedin.com/in/taniya-patel-a35b52282",
       twitter: "https://twitter.com/taniyapatel"
     }
