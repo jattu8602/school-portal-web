@@ -112,10 +112,16 @@ export default function LandingPage() {
               ) : (
                 <>
                   <Link
-                    href="/auth/signin"
+                    href="/auth/student/login"
                     className="px-4 py-2 text-gray-600 hover:text-gray-900"
                   >
-                    Sign In
+                    Student Login
+                  </Link>
+                  <Link
+                    href="/auth/teacher/login"
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  >
+                    Teacher Login
                   </Link>
                   <Link
                     href="/auth/signup"
