@@ -18,6 +18,6 @@
     "isolatedModules": true,
     "incremental": true
   },
-  "include": ["**/*.js", "**/*.jsx"],
+  "include": ["**/*.js", "**/*.jsx", "app/not-found.js"],
   "exclude": ["node_modules"]
 }
