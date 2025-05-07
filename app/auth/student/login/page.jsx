@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { AlertCircle } from "lucide-react"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function StudentLogin() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    schoolCode: "",
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -23,15 +26,58 @@ export default function StudentLogin() {
     setError("")
 
     try {
-      // TODO: Implement actual authentication
-      // For now, we'll just simulate a successful login
-      if (formData.username && formData.password) {
-        router.push("/student/home")
-      } else {
+      // Validate inputs
+      if (!formData.username || !formData.password || !formData.schoolCode) {
         setError("Please fill in all fields")
+        return
       }
+
+      // Get the school document using school code
+      const schoolsRef = collection(db, 'schools')
+      const q = query(schoolsRef, where('schoolCode', '==', formData.schoolCode))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        setError("Invalid school code")
+        return
+      }
+
+      const schoolDoc = querySnapshot.docs[0]
+      const schoolId = schoolDoc.id
+
+      // Get the student document
+      const studentsRef = collection(db, 'schools', schoolId, 'students')
+      const studentQuery = query(studentsRef, where('username', '==', formData.username))
+      const studentSnapshot = await getDocs(studentQuery)
+
+      if (studentSnapshot.empty) {
+        setError("Invalid username or password")
+        return
+      }
+
+      const studentDoc = studentSnapshot.docs[0]
+      const studentData = studentDoc.data()
+
+      // Verify password
+      if (studentData.password !== formData.password) {
+        setError("Invalid username or password")
+        return
+      }
+
+      // Store student info in localStorage for session management
+      localStorage.setItem('user', JSON.stringify({
+        id: studentDoc.id,
+        name: studentData.name,
+        username: studentData.username,
+        role: 'student',
+        schoolId: schoolId,
+        classId: studentData.classId
+      }))
+
+      router.push("/student/home")
     } catch (err) {
-      setError("Invalid credentials")
+      console.error("Login error:", err)
+      setError("An error occurred during login")
     } finally {
       setLoading(false)
     }
@@ -67,6 +113,17 @@ export default function StudentLogin() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="schoolCode">School Code</Label>
+              <Input
+                id="schoolCode"
+                type="text"
+                placeholder="Enter your school code"
+                value={formData.schoolCode}
+                onChange={(e) => setFormData({ ...formData, schoolCode: e.target.value })}
                 className="w-full"
               />
             </div>

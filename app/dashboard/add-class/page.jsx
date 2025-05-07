@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Pencil, Plus, Users, X, Save } from "lucide-react"
 import { auth, db } from '../../../lib/firebase'
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where, getDoc } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where, getDoc, writeBatch } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import { useToast } from '../../context/ToastContext'

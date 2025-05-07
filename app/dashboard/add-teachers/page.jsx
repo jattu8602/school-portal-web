@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Pencil, Plus, Users, X, Save, Trash2 } from "lucide-react"
 import { auth, db } from '../../../lib/firebase'
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 
@@ -180,14 +180,21 @@ export default function TeachersPage() {
         return
       }
 
+      // Check if teacher with this email already exists in the school
+      const teachersRef = collection(db, 'schools', user.uid, 'teachers')
+      const q = query(teachersRef, where('email', '==', teacherFormData.email.toLowerCase()))
+      const querySnapshot = await getDocs(q)
+
+      if (!querySnapshot.empty) {
+        alert('A teacher with this email already exists in your school')
+        return
+      }
+
       // Generate a password for the teacher
       const password = generatePassword()
 
       // Generate a unique ID from email
       const teacherId = teacherFormData.email.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-      // Check if the teacher already exists
-      const teacherRef = doc(db, 'schools', user.uid, 'teachers', teacherId)
 
       // Create a map of classId to subject for easy querying
       const classSubjects = {}
@@ -196,16 +203,16 @@ export default function TeachersPage() {
       })
 
       // Save teacher to Firestore
-      await setDoc(teacherRef, {
+      await setDoc(doc(db, 'schools', user.uid, 'teachers', teacherId), {
         fullName: teacherFormData.fullName,
         email: teacherFormData.email.toLowerCase(),
         phone: teacherFormData.phone,
         subject: teacherFormData.subject,
         qualification: teacherFormData.qualification,
         gender: teacherFormData.gender,
-        password: password,
         subjects: teacherFormData.subjects,
-        classSubjects: classSubjects, // Map for quicker lookups
+        classSubjects,
+        password, // Store the generated password
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
@@ -222,9 +229,10 @@ export default function TeachersPage() {
       })
       setShowAddTeacherModal(false)
       fetchTeachers(user.uid)
+      showToast(`Teacher ${teacherFormData.fullName} added successfully`, 'success')
     } catch (err) {
       console.error('Error adding teacher:', err)
-      alert('Failed to add teacher: ' + err.message)
+      showToast(`Failed to add teacher: ${err.message}`, 'error')
     }
   }
 

@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { AlertCircle } from "lucide-react"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 export default function TeacherLogin() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    schoolCode: "",
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -23,15 +26,58 @@ export default function TeacherLogin() {
     setError("")
 
     try {
-      // TODO: Implement actual authentication
-      // For now, we'll just simulate a successful login
-      if (formData.email && formData.password) {
-        router.push("/teacher/home")
-      } else {
+      // Validate inputs
+      if (!formData.email || !formData.password || !formData.schoolCode) {
         setError("Please fill in all fields")
+        return
       }
+
+      // Get the school document using school code
+      const schoolsRef = collection(db, 'schools')
+      const q = query(schoolsRef, where('schoolCode', '==', formData.schoolCode))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        setError("Invalid school code")
+        return
+      }
+
+      const schoolDoc = querySnapshot.docs[0]
+      const schoolId = schoolDoc.id
+
+      // Get the teacher document
+      const teachersRef = collection(db, 'schools', schoolId, 'teachers')
+      const teacherQuery = query(teachersRef, where('email', '==', formData.email.toLowerCase()))
+      const teacherSnapshot = await getDocs(teacherQuery)
+
+      if (teacherSnapshot.empty) {
+        setError("Invalid email or password")
+        return
+      }
+
+      const teacherDoc = teacherSnapshot.docs[0]
+      const teacherData = teacherDoc.data()
+
+      // Verify password
+      if (teacherData.password !== formData.password) {
+        setError("Invalid email or password")
+        return
+      }
+
+      // Store teacher info in localStorage for session management
+      localStorage.setItem('user', JSON.stringify({
+        id: teacherDoc.id,
+        name: teacherData.fullName,
+        email: teacherData.email,
+        role: 'teacher',
+        schoolId: schoolId,
+        subjects: teacherData.subjects || []
+      }))
+
+      router.push("/teacher/home")
     } catch (err) {
-      setError("Invalid credentials")
+      console.error("Login error:", err)
+      setError("An error occurred during login")
     } finally {
       setLoading(false)
     }
@@ -67,6 +113,17 @@ export default function TeacherLogin() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="schoolCode">School Code</Label>
+              <Input
+                id="schoolCode"
+                type="text"
+                placeholder="Enter your school code"
+                value={formData.schoolCode}
+                onChange={(e) => setFormData({ ...formData, schoolCode: e.target.value })}
                 className="w-full"
               />
             </div>
