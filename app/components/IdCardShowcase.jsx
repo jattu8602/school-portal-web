@@ -25,7 +25,7 @@ export default function IdCardShowcase() {
                 <div className="bg-card border-2 border-primary rounded-xl overflow-hidden shadow-lg">
                   {/* Header */}
                   <div className="bg-primary text-primary-foreground p-4 text-center">
-                    <h3 className="text-xl font-bold">Delhi Public School</h3>
+                    <h3 className="text-xl font-bold text-white">Delhi Public School</h3>
                     <p className="text-sm">Student Identification Card</p>
                   </div>
 
@@ -139,7 +139,7 @@ export default function IdCardShowcase() {
                 <div className="bg-card border-2 border-primary rounded-xl overflow-hidden shadow-lg">
                   {/* Header */}
                   <div className="bg-primary text-primary-foreground p-4 text-center">
-                    <h3 className="text-xl font-bold">Delhi Public School</h3>
+                    <h3 className="text-xl font-bold text-white">Delhi Public School</h3>
                     <p className="text-sm">Teacher Identification Card</p>
                   </div>
 
