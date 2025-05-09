@@ -10,69 +10,136 @@ service cloud.firestore {
       return request.auth.uid == schoolId;
     }
 
+    // Allow read access to authenticated users for their own school data
+    function isSchoolMember(schoolId) {
+      return isSignedIn() &&
+        (isOwner(schoolId) ||
+         exists(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)) ||
+         exists(/databases/$(database)/documents/schools/$(schoolId)/students/$(request.auth.uid)));
+    }
+
     // School data rules
     match /schools/{schoolId} {
-      // Allow school to read and write their own document
-      allow read, write: if isSignedIn() && isOwner(schoolId);
+      // Allow reading school document by school code for login purposes
+      allow read: if true; // Allow anyone to read school documents for login
+
+      // Only school admin can write to their own document
+      allow write: if isSignedIn() && isOwner(schoolId);
+
+      // Banners collection
+      match /banners/{bannerId} {
+        // School members can read banners
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner can manage banners
+        allow write: if isSignedIn() && isOwner(schoolId);
+      }
 
       // Classes collection
       match /classes/{classId} {
-        // School can read and manage their classes
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read, but only owner can write
+        allow read: if isSchoolMember(schoolId);
+        allow write: if isSignedIn() && isOwner(schoolId);
       }
 
       // Teachers collection
       match /teachers/{teacherId} {
-        // School can read and manage their teachers
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // Allow read for login verification and school members
+        allow read: if true; // Allow reading teacher docs for login
+        // Only school owner can manage teachers
+        allow write: if isSignedIn() && isOwner(schoolId);
       }
 
       // Students collection
       match /students/{studentId} {
-        // School can read and manage their students
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // Allow read for login verification and school members
+        allow read: if true; // Allow reading student docs for login
+        // Only school owner can manage students
+        allow write: if isSignedIn() && isOwner(schoolId);
       }
 
       // Attendance collection
       match /attendance/{attendanceId} {
-        // School can read and manage attendance records
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read attendance
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner and teachers can manage attendance
+        allow write: if isSignedIn() &&
+                     (isOwner(schoolId) ||
+                      exists(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)));
       }
 
       // Timetable collection
       match /timetable/{timetableId} {
-        // School can read and manage timetables
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read timetables
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner can manage timetables
+        allow write: if isSignedIn() && isOwner(schoolId);
       }
 
       // Exams collection
       match /exams/{examId} {
-        // School can read and manage exams
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read exams
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner and teachers can manage exams
+        allow write: if isSignedIn() &&
+                     (isOwner(schoolId) ||
+                      exists(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)));
 
         // Exam results subcollection
         match /results/{resultId} {
-          allow read, write: if isSignedIn() && isOwner(schoolId);
+          allow read: if isSchoolMember(schoolId);
+          allow write: if isSignedIn() &&
+                       (isOwner(schoolId) ||
+                        exists(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)));
         }
       }
 
       // Fees collection
       match /fees/{feeId} {
-        // School can read and manage fee records
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read fee records (students should see their own fees)
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner can manage fee records
+        allow write: if isSignedIn() && isOwner(schoolId);
       }
 
       // Announcements collection
       match /announcements/{announcementId} {
-        // School can read and manage announcements
-        allow read, write: if isSignedIn() && isOwner(schoolId);
+        // School members can read announcements
+        allow read: if isSchoolMember(schoolId);
+        // Only school owner and teachers can create/modify announcements
+        allow write: if isSignedIn() &&
+                     (isOwner(schoolId) ||
+                      exists(/databases/$(database)/documents/schools/$(schoolId)/teachers/$(request.auth.uid)));
+      }
+
+      // Chat collection
+      match /chats/{chatId} {
+        // All school members can read and write to chats they're part of
+        allow read, write: if isSchoolMember(schoolId) &&
+                            (request.auth.uid in resource.data.participants ||
+                             request.auth.uid in request.resource.data.participants);
       }
     }
 
-    // Public school information - read only
+    // Users collection - to store user profiles
+    match /users/{userId} {
+      // Users can read/write their own data
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Public school information - read only for everyone
     match /public-schools/{schoolId} {
       allow read: if true;
       allow write: if isSignedIn() && isOwner(schoolId);
+    }
+
+    // Allow newly created users to create their school profile
+    match /school-registrations/{registrationId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Navigation items collection - both students and teachers need access
+    match /navigation-items/{itemId} {
+      allow read: if isSignedIn();
     }
   }
 }

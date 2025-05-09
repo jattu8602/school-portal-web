@@ -35,12 +35,12 @@ export const teamMembers = [
   },
   {
     name: "Taniya Patel",
-    tag: "3D Designer",
+    tag: "Product Designer",
     photo: "/team/Taniya_Patel.jpg",
     links: {
       github: "https://github.com/taniyaapatel",
       instagram: "https://instagram.com/taniyaa.09",
-      linkedin: "https://www.linkedin.com/in/taniya-patel-a35b52282",
+      linkedin: "www.linkedin.com/in/taniya-patel-a35b52282",
       twitter: "https://twitter.com/taniyapatel"
     }
   },

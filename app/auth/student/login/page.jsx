@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,11 @@ export default function StudentLogin() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Clear any existing auth data on component mount
+  useEffect(() => {
+    localStorage.removeItem('user');
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -30,21 +35,30 @@ export default function StudentLogin() {
       // Validate inputs
       if (!formData.username || !formData.password || !formData.schoolCode) {
         setError("Please fill in all fields")
+        setLoading(false)
         return
       }
 
+      console.log("Attempting student login with:", {
+        username: formData.username,
+        schoolCode: formData.schoolCode
+      });
+
       // Get the school document using school code
       const schoolsRef = collection(db, 'schools')
-      const q = query(schoolsRef, where('schoolCode', '==', formData.schoolCode))
+      const q = query(schoolsRef, where('code', '==', formData.schoolCode))
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
+        console.error("Invalid school code");
         setError("Invalid school code")
+        setLoading(false)
         return
       }
 
       const schoolDoc = querySnapshot.docs[0]
       const schoolId = schoolDoc.id
+      console.log("Found school with ID:", schoolId);
 
       // Get the student document
       const studentsRef = collection(db, 'schools', schoolId, 'students')
@@ -52,33 +66,45 @@ export default function StudentLogin() {
       const studentSnapshot = await getDocs(studentQuery)
 
       if (studentSnapshot.empty) {
+        console.error("Student not found");
         setError("Invalid username or password")
+        setLoading(false)
         return
       }
 
       const studentDoc = studentSnapshot.docs[0]
       const studentData = studentDoc.data()
+      console.log("Found student:", studentDoc.id);
 
       // Verify password
       if (studentData.password !== formData.password) {
+        console.error("Password mismatch");
         setError("Invalid username or password")
+        setLoading(false)
         return
       }
 
       // Store student info in localStorage for session management
-      localStorage.setItem('user', JSON.stringify({
+      const userData = {
         id: studentDoc.id,
         name: studentData.name,
         username: studentData.username,
         role: 'student',
         schoolId: schoolId,
-        classId: studentData.classId
-      }))
+        classId: studentData.classId,
+        schoolCode: formData.schoolCode
+      }
 
+      console.log("Authentication successful, storing user data");
+      localStorage.setItem('user', JSON.stringify(userData))
       router.push("/student/home")
     } catch (err) {
       console.error("Login error:", err)
-      setError("An error occurred during login")
+      if (err.code === 'permission-denied') {
+        setError("Access denied. Please check your credentials and try again.")
+      } else {
+        setError("An error occurred during login. Please try again.")
+      }
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,11 @@ export default function TeacherLogin() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Clear any existing auth data on component mount
+  useEffect(() => {
+    localStorage.removeItem('user');
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -30,21 +35,30 @@ export default function TeacherLogin() {
       // Validate inputs
       if (!formData.email || !formData.password || !formData.schoolCode) {
         setError("Please fill in all fields")
+        setLoading(false)
         return
       }
 
+      console.log("Attempting teacher login with:", {
+        email: formData.email,
+        schoolCode: formData.schoolCode
+      });
+
       // Get the school document using school code
       const schoolsRef = collection(db, 'schools')
-      const q = query(schoolsRef, where('schoolCode', '==', formData.schoolCode))
+      const q = query(schoolsRef, where('code', '==', formData.schoolCode))
       const querySnapshot = await getDocs(q)
 
       if (querySnapshot.empty) {
+        console.error("Invalid school code");
         setError("Invalid school code")
+        setLoading(false)
         return
       }
 
       const schoolDoc = querySnapshot.docs[0]
       const schoolId = schoolDoc.id
+      console.log("Found school with ID:", schoolId);
 
       // Get the teacher document
       const teachersRef = collection(db, 'schools', schoolId, 'teachers')
@@ -52,33 +66,45 @@ export default function TeacherLogin() {
       const teacherSnapshot = await getDocs(teacherQuery)
 
       if (teacherSnapshot.empty) {
+        console.error("Teacher not found");
         setError("Invalid email or password")
+        setLoading(false)
         return
       }
 
       const teacherDoc = teacherSnapshot.docs[0]
       const teacherData = teacherDoc.data()
+      console.log("Found teacher:", teacherDoc.id);
 
       // Verify password
       if (teacherData.password !== formData.password) {
+        console.error("Password mismatch");
         setError("Invalid email or password")
+        setLoading(false)
         return
       }
 
       // Store teacher info in localStorage for session management
-      localStorage.setItem('user', JSON.stringify({
+      const userData = {
         id: teacherDoc.id,
-        name: teacherData.fullName,
+        name: teacherData.fullName || teacherData.name,
         email: teacherData.email,
         role: 'teacher',
         schoolId: schoolId,
-        subjects: teacherData.subjects || []
-      }))
+        subjects: teacherData.subjects || [],
+        schoolCode: formData.schoolCode
+      }
 
+      console.log("Authentication successful, storing user data");
+      localStorage.setItem('user', JSON.stringify(userData))
       router.push("/teacher/home")
     } catch (err) {
       console.error("Login error:", err)
-      setError("An error occurred during login")
+      if (err.code === 'permission-denied') {
+        setError("Access denied. Please check your credentials and try again.")
+      } else {
+        setError("An error occurred during login. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
