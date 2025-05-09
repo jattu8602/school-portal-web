@@ -40,7 +40,7 @@ export const teamMembers = [
     links: {
       github: "https://github.com/taniyaapatel",
       instagram: "https://instagram.com/taniyaa.09",
-      linkedin: "www.linkedin.com/in/taniya-patel-a35b52282",
+      linkedin: "https://www.linkedin.com/in/taniya-patel-a35b52282",
       twitter: "https://twitter.com/taniyapatel"
     }
   },
