@@ -36,6 +36,17 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/schools/$(schoolId)/classes/$(classId)/students/$(request.auth.uid));
     }
 
+    match /banners/{bannerId} {
+  // Allow reading banners for school members
+  allow read: if isSignedIn() && (
+    isSchoolAdmin(resource.data.schoolId) ||
+    isSchoolMember(resource.data.schoolId)
+  );
+  // Only school admin can create, update, or delete their own banners
+  allow create: if isSignedIn() && request.resource.data.schoolId == request.auth.uid;
+  allow update, delete: if isSignedIn() && resource.data.schoolId == request.auth.uid;
+}
+
     // School registration and login
     match /schools/{schoolId} {
       // Allow reading school document for login verification
@@ -142,16 +153,6 @@ service cloud.firestore {
         allow read: if isSchoolMember(schoolId);
         // Only school admin can manage fee records
         allow write: if isSchoolAdmin(schoolId);
-      }
-
-      // Banners subcollection rules
-      match /banners/{bannerId} {
-        // Allow reading banners for all authenticated users in the school
-        allow read: if isSchoolMember(schoolId);
-        // Only school admin can create, update, or delete banners
-        allow create: if isSchoolAdmin(schoolId);
-        allow update: if isSchoolAdmin(schoolId);
-        allow delete: if isSchoolAdmin(schoolId);
       }
     }
 

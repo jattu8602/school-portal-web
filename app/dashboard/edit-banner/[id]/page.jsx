@@ -53,27 +53,38 @@ export default function EditBannerPage({ params }) {
 
   const fetchBanner = async (schoolId, bannerId) => {
     try {
-      const bannerDocRef = doc(db, "schools", schoolId, "banners", bannerId)
-      const bannerDoc = await getDoc(bannerDocRef)
+      console.log("Fetching banner for edit, school ID:", schoolId, "banner ID:", bannerId);
+
+      // Get the banner from the top-level banners collection
+      const bannerDocRef = doc(db, "banners", bannerId);
+      const bannerDoc = await getDoc(bannerDocRef);
 
       if (!bannerDoc.exists()) {
-        setError("Banner not found")
-        return
+        setError("Banner not found");
+        return;
       }
 
-      const bannerData = bannerDoc.data()
-      setBanner(bannerData)
-      setBannerType(bannerData.type || "image")
-      setTitle(bannerData.title || "")
-      setDescription(bannerData.description || "")
-      setMediaUrl(bannerData.url || "")
-      setPreviewUrl(bannerData.url || "")
-      setTag(bannerData.tags && bannerData.tags.length > 0 ? bannerData.tags[0] : "")
-      setButtonText(bannerData.buttonText || "")
-      setButtonLink(bannerData.buttonLink || "")
+      const bannerData = bannerDoc.data();
+
+      // Verify this banner belongs to this school
+      if (bannerData.schoolId !== schoolId) {
+        console.error("Banner does not belong to this school");
+        setError("You don't have permission to edit this banner");
+        return;
+      }
+
+      setBanner(bannerData);
+      setBannerType(bannerData.type || "image");
+      setTitle(bannerData.title || "");
+      setDescription(bannerData.description || "");
+      setMediaUrl(bannerData.url || "");
+      setPreviewUrl(bannerData.url || "");
+      setTag(bannerData.tags && bannerData.tags.length > 0 ? bannerData.tags[0] : "");
+      setButtonText(bannerData.buttonText || "");
+      setButtonLink(bannerData.buttonLink || "");
     } catch (error) {
-      console.error("Error fetching banner:", error)
-      setError(`Error fetching banner: ${error.message}`)
+      console.error("Error fetching banner:", error);
+      setError(`Error fetching banner: ${error.message}`);
     }
   }
 
@@ -243,26 +254,26 @@ export default function EditBannerPage({ params }) {
         tags: tag.trim() ? [tag.trim()] : [],
         buttonText: buttonText.trim(),
         buttonLink: buttonLink.trim(),
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       }
 
       console.log("Updating banner in Firestore:", bannerData)
-      console.log("Document path:", `schools/${user.uid}/banners/${id}`)
+      console.log("Document path:", `banners/${id}`)
 
-      await updateDoc(doc(db, "schools", user.uid, "banners", id), bannerData)
-      console.log("Banner updated successfully")
+      const bannerRef = doc(db, "banners", id)
+      await updateDoc(bannerRef, bannerData)
 
       setSuccess("Banner updated successfully! Redirecting to banner preview...")
-      toast.success("Banner updated successfully!");
+      toast.success("Banner updated successfully!")
 
       // Redirect after a brief delay
       setTimeout(() => {
         router.push("/dashboard/preview-banners")
       }, 2000)
     } catch (error) {
-      console.error("Update error:", error)
-      setError(`Failed to update banner: ${error.message}. Please try again.`)
-      toast.error(`Failed to update banner: ${error.message}`);
+      console.error("Save error:", error)
+      setError(`Failed to update banner: ${error.message}`)
+      toast.error(`Failed to update banner: ${error.message}`)
     } finally {
       setUploading(false)
     }

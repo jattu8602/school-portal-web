@@ -69,22 +69,64 @@ export default function TeacherDashboard() {
         setStudents(studentsData)
 
         // Fetch active banner
-        const now = new Date().toISOString()
-        const bannersQuery = query(
-          collection(db, 'schools', schoolId, 'banners'),
-          where('status', '==', 'active'),
-          where('startDate', '<=', now),
-          where('endDate', '>=', now),
-          orderBy('createdAt', 'desc'),
-          limit(1)
-        )
-        const bannersSnapshot = await getDocs(bannersQuery)
-        if (!bannersSnapshot.empty) {
-          const bannerDoc = bannersSnapshot.docs[0]
-          setBanner({
-            id: bannerDoc.id,
-            ...bannerDoc.data()
-          })
+        try {
+          console.log("Fetching banners for teacher, school ID:", schoolId);
+
+          // Simple query with no complex filters or ordering
+          const bannersQuery = query(
+            collection(db, 'banners'),
+            where('schoolId', '==', schoolId)
+          );
+
+          console.log("Executing banners query");
+          const bannersSnapshot = await getDocs(bannersQuery);
+          console.log(`Found ${bannersSnapshot.size} banners for school ID ${schoolId}`);
+
+          if (!bannersSnapshot.empty) {
+            // Process all banners and filter client-side
+            const allBanners = [];
+            const now = new Date();
+
+            bannersSnapshot.forEach((doc) => {
+              const bannerData = doc.data();
+              console.log("Banner data:", bannerData);
+
+              if (bannerData.status === 'active') {
+                // Check dates if they exist
+                if (bannerData.startDate && bannerData.endDate) {
+                  const startDate = new Date(bannerData.startDate);
+                  const endDate = new Date(bannerData.endDate);
+
+                  if (now >= startDate && now <= endDate) {
+                    allBanners.push({
+                      id: doc.id,
+                      ...bannerData
+                    });
+                  }
+                } else {
+                  // If no dates, include by default
+                  allBanners.push({
+                    id: doc.id,
+                    ...bannerData
+                  });
+                }
+              }
+            });
+
+            // Sort and select the most recent banner
+            if (allBanners.length > 0) {
+              allBanners.sort((a, b) =>
+                new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+              );
+
+              setBanner(allBanners[0]);
+              console.log("Set active banner:", allBanners[0]);
+            }
+          } else {
+            console.log("No banners found for this school");
+          }
+        } catch (bannerError) {
+          console.error("Error fetching banner:", bannerError);
         }
 
         // Update stats

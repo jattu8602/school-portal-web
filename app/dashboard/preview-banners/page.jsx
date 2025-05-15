@@ -46,7 +46,7 @@ export default function PreviewBannersPage() {
 
   const fetchBanners = async (schoolId) => {
     try {
-      console.log("Fetching banners for preview, school ID:", schoolId);
+      console.log("Fetching banners for preview for school ID:", schoolId);
 
       // Check if the school document exists first
       const schoolDocRef = doc(db, "schools", schoolId);
@@ -54,42 +54,49 @@ export default function PreviewBannersPage() {
 
       if (!schoolDoc.exists()) {
         console.error("School document not found");
-        setBanners(getDefaultBanners());
+        setBanners([]);
         return;
       }
 
-      // Create banners subcollection reference
-      const bannersCollectionRef = collection(db, "schools", schoolId, "banners");
+      // Simple query to get all banners for this school
+      const bannersQuery = query(
+        collection(db, 'banners'),
+        where('schoolId', '==', schoolId)
+      );
 
-      // Check if the collection exists by trying to get documents
-      try {
-        const bannersQuery = query(bannersCollectionRef, orderBy("createdAt", "desc"));
-        const bannersSnapshot = await getDocs(bannersQuery);
+      console.log("Executing banners query");
+      const bannersSnapshot = await getDocs(bannersQuery);
+      console.log(`Found ${bannersSnapshot.size} banners`);
 
-        if (bannersSnapshot.empty) {
-          console.log("No banners found for preview, using defaults");
-          setBanners(getDefaultBanners());
-          return;
-        }
+      const fetchedBanners = [];
 
-        const fetchedBanners = [];
-        bannersSnapshot.forEach((doc) => {
-          fetchedBanners.push({
-            id: doc.id,
-            ...doc.data()
-          });
+      bannersSnapshot.forEach((doc) => {
+        const bannerData = doc.data();
+        // Add all banners to the preview list
+        fetchedBanners.push({
+          id: doc.id,
+          title: bannerData.title,
+          description: bannerData.description,
+          type: bannerData.type,
+          url: bannerData.url,
+          tags: bannerData.tags || [],
+          buttonText: bannerData.buttonText,
+          buttonLink: bannerData.buttonLink,
+          status: bannerData.status || 'active',
+          startDate: bannerData.startDate || new Date().toISOString(),
+          endDate: bannerData.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: bannerData.createdAt || new Date().toISOString(),
+          updatedAt: bannerData.updatedAt || new Date().toISOString()
         });
+      });
 
-        console.log("Fetched banners for preview:", fetchedBanners);
-        setBanners(fetchedBanners);
-      } catch (error) {
-        // If permission error, use default banners
-        console.error("Error fetching banners for preview:", error.message);
-        setBanners(getDefaultBanners());
-      }
+      // Sort by createdAt in memory
+      fetchedBanners.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setBanners(fetchedBanners);
+      console.log("Banners set in state:", fetchedBanners.length);
     } catch (error) {
-      console.error("Error in fetchBanners for preview:", error.message);
-      setBanners(getDefaultBanners());
+      console.error("Error fetching banners for preview:", error);
+      setBanners([]);
     }
   };
 
@@ -128,7 +135,7 @@ export default function PreviewBannersPage() {
     try {
       // Delete from Firestore if it's not a default banner
       if (id !== "1" && id !== "2" && id !== "3") {
-        await deleteDoc(doc(db, "schools", user.uid, "banners", id));
+        await deleteDoc(doc(db, "banners", id));
       }
 
       // Update UI
@@ -160,10 +167,10 @@ export default function PreviewBannersPage() {
     if (!user || colors.length === 0) return;
 
     try {
-      const bannerRef = doc(db, "schools", user.uid, "banners", bannerId);
+      const bannerRef = doc(db, "banners", bannerId);
       await updateDoc(bannerRef, {
         extractedColors: colors,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       });
       console.log(`Updated colors for banner ${bannerId}`);
 

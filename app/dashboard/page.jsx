@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { auth, db } from "@/lib/firebase"
 import { onAuthStateChanged } from "firebase/auth"
-import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, updateDoc, where } from "firebase/firestore"
+import { verifySchoolAdmin } from "@/lib/auth"
 import BannerSlideshow from "../components/dashboard/BannerSlideshow"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -38,8 +39,20 @@ export default function DashboardHome() {
       if (currentUser) {
         setUser(currentUser)
         try {
+          const isAdmin = await verifySchoolAdmin(currentUser.uid)
+          if (!isAdmin) {
+            console.error("User is not a school admin")
+            router.push("/auth/signin")
+            return
+          }
+
           await fetchSchoolInfo(currentUser.uid)
-          await fetchBanners(currentUser.uid)
+          try {
+            await fetchBanners(currentUser.uid)
+          } catch (bannerError) {
+            console.error("Error fetching banners:", bannerError)
+            setBanners(getDefaultBanners())
+          }
         } catch (error) {
           console.error("Error fetching data:", error)
         } finally {
@@ -92,37 +105,59 @@ export default function DashboardHome() {
         return;
       }
 
-      // Create banners subcollection reference
-      const bannersCollectionRef = collection(db, "schools", schoolId, "banners");
-
-      // Check if the collection exists by trying to get documents
+      // First, get all banners for the school
       try {
-        const bannersQuery = query(bannersCollectionRef, orderBy("createdAt", "desc"), limit(5));
+        const bannersQuery = query(
+          collection(db, 'banners'),
+          where('schoolId', '==', schoolId)
+        );
+
         const bannersSnapshot = await getDocs(bannersQuery);
-
-        if (bannersSnapshot.empty) {
-          console.log("No banners found, using defaults");
-          setBanners(getDefaultBanners());
-          return;
-        }
-
         const fetchedBanners = [];
+
         bannersSnapshot.forEach((doc) => {
-          fetchedBanners.push({
-            id: doc.id,
-            ...doc.data()
-          });
+          const bannerData = doc.data();
+          // Only include active banners within date range
+          if (bannerData.status === 'active') {
+            const startDate = new Date(bannerData.startDate);
+            const endDate = new Date(bannerData.endDate);
+            const currentDate = new Date();
+
+            if (currentDate >= startDate && currentDate <= endDate) {
+              fetchedBanners.push({
+                id: doc.id,
+                title: bannerData.title,
+                description: bannerData.description,
+                type: bannerData.type,
+                url: bannerData.url,
+                tags: bannerData.tags || [],
+                buttonText: bannerData.buttonText,
+                buttonLink: bannerData.buttonLink,
+                createdAt: bannerData.createdAt,
+                updatedAt: bannerData.updatedAt
+              });
+            }
+          }
         });
 
-        console.log("Fetched banners:", fetchedBanners);
-        setBanners(fetchedBanners);
-      } catch (error) {
-        // If permission error, use default banners
-        console.error("Error fetching banners:", error.message);
+        // Sort by createdAt in memory
+        fetchedBanners.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        if (fetchedBanners.length > 0) {
+          setBanners(fetchedBanners);
+          console.log("Fetched and set banners:", fetchedBanners.length);
+        } else {
+          console.log("No active banners found, using default banners");
+          setBanners(getDefaultBanners());
+        }
+      } catch (bannerQueryError) {
+        console.error("Banner query error:", bannerQueryError);
+        // Show default banners if there's an error with the query
         setBanners(getDefaultBanners());
       }
     } catch (error) {
       console.error("Error in fetchBanners:", error.message);
+      // Always set default banners on error
       setBanners(getDefaultBanners());
     }
   };
@@ -170,10 +205,10 @@ export default function DashboardHome() {
     if (!user || colors.length === 0) return;
 
     try {
-      const bannerRef = doc(db, "schools", user.uid, "banners", bannerId);
+      const bannerRef = doc(db, "banners", bannerId);
       await updateDoc(bannerRef, {
         extractedColors: colors,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       });
       console.log(`Updated colors for banner ${bannerId} from dashboard`);
 

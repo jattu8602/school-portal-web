@@ -95,9 +95,21 @@ export default function AddBannerPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser)
-        await fetchSchoolInfo(currentUser.uid)
-        setLoading(false)
+        // Verify if the user is a school admin
+        try {
+          const schoolDoc = await getDoc(doc(db, "schools", currentUser.uid))
+          if (!schoolDoc.exists()) {
+            console.error("User is not a school admin")
+            router.push("/auth/signin")
+            return
+          }
+          setUser(currentUser)
+          await fetchSchoolInfo(currentUser.uid)
+          setLoading(false)
+        } catch (error) {
+          console.error("Error verifying school admin:", error)
+          router.push("/auth/signin")
+        }
       } else {
         router.push("/auth/signin")
       }
@@ -301,6 +313,11 @@ export default function AddBannerPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    if (!user) {
+      setError("You must be logged in to create a banner")
+      return
+    }
+
     if (!title.trim()) {
       setError("Please enter a title")
       return
@@ -330,10 +347,11 @@ export default function AddBannerPage() {
         buttonText: buttonText.trim(),
         buttonLink: buttonLink.trim(),
         status: 'active',
-        startDate: new Date().toISOString(), // Set start date to now
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Set end date to 30 days from now
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        schoolId: user.uid
       }
 
       // Add extracted colors to banner data if available
@@ -341,37 +359,37 @@ export default function AddBannerPage() {
         bannerData.extractedColors = extractedColors;
       }
 
-      console.log("Saving banner to Firestore:", bannerData)
-      console.log("Collection path:", `schools/${user.uid}/banners`)
+      console.log("Saving banner to Firestore:", bannerData);
+      console.log("User ID (school ID):", user.uid);
+      console.log("Collection path:", 'banners');
 
-      const docRef = await addDoc(collection(db, "schools", user.uid, "banners"), bannerData)
-      console.log("Banner saved with ID:", docRef.id)
+      // Create the document in the top-level banners collection
+      const docRef = await addDoc(collection(db, "banners"), bannerData);
+      console.log("Banner saved with ID:", docRef.id);
 
-      setSuccess("Banner added successfully! Redirecting to banner preview...")
+      setSuccess("Banner added successfully! Redirecting to banner preview...");
       toast.success("Banner added successfully!");
 
       // Reset form
-      setTitle("")
-      setDescription("")
-      setMediaUrl("")
-      setPreviewUrl("")
-      setTag("")
-      setButtonText("")
-      setButtonLink("")
-      setUploadProgress(0)
-      setExtractedColors([])
+      setTitle("");
+      setDescription("");
+      setMediaUrl("");
+      setPreviewUrl("");
+      setTag("");
+      setButtonText("");
+      setButtonLink("");
+      setUploadProgress(0);
+      setExtractedColors([]);
 
       // Redirect after a brief delay
       setTimeout(() => {
-        router.push("/dashboard/preview-banners")
-      }, 2000)
+        router.push("/dashboard/preview-banners");
+      }, 2000);
     } catch (error) {
-      console.error("Save error:", error)
-      setError(`Failed to save banner: ${error.message}. Please try again.`)
+      console.error("Save error:", error);
+      setError(`Failed to save banner: ${error.message}. Please try again.`);
       toast.error(`Failed to save banner: ${error.message}`);
-      setUploading(false)
-    } finally {
-      setUploading(false)
+      setUploading(false);
     }
   }
 
