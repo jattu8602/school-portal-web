@@ -1,125 +1,241 @@
 "use client"
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, BookOpen, MessageSquare, User, Bell, LogOut, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { Users, BookOpen, Calendar, FileText, MessageSquare, Bell } from "lucide-react"
 
-export default function TeacherHome() {
-  const [activeTab, setActiveTab] = useState("home")
+export default function TeacherDashboard() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [teacherData, setTeacherData] = useState(null)
+  const [classes, setClasses] = useState([])
+  const [students, setStudents] = useState([])
+  const [banner, setBanner] = useState(null)
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalClasses: 0,
+    totalAssignments: 0,
+    totalAnnouncements: 0,
+    classes: 0,
+    students: 0,
+    assignments: 0,
+    events: 0
+  })
 
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      try {
+        // Get user data from localStorage
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/teacher/login')
+          return
+        }
 
+        const { schoolId, id: teacherId } = userData
 
-  const classes = [
-    { name: "10th Grade A", subject: "Mathematics", students: 35 },
-    { name: "10th Grade B", subject: "Mathematics", students: 32 },
-    { name: "11th Grade A", subject: "Physics", students: 28 },
-  ]
+        // Fetch teacher data
+        const teacherDoc = await getDoc(doc(db, 'schools', schoolId, 'teachers', teacherId))
+        if (teacherDoc.exists()) {
+          setTeacherData(teacherDoc.data())
+        }
+
+        // Fetch teacher's classes
+        const classesQuery = query(
+          collection(db, 'schools', schoolId, 'classes'),
+          where('teachers', 'array-contains', teacherId)
+        )
+        const classesSnapshot = await getDocs(classesQuery)
+        const classesData = classesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setClasses(classesData)
+
+        // Fetch students in teacher's classes
+        const classIds = classesData.map(c => c.id)
+        const studentsQuery = query(
+          collection(db, 'schools', schoolId, 'students'),
+          where('classId', 'in', classIds)
+        )
+        const studentsSnapshot = await getDocs(studentsQuery)
+        const studentsData = studentsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setStudents(studentsData)
+
+        // Fetch active banner
+        const now = new Date().toISOString()
+        const bannersQuery = query(
+          collection(db, 'schools', schoolId, 'banners'),
+          where('status', '==', 'active'),
+          where('startDate', '<=', now),
+          where('endDate', '>=', now),
+          orderBy('createdAt', 'desc'),
+          limit(1)
+        )
+        const bannersSnapshot = await getDocs(bannersQuery)
+        if (!bannersSnapshot.empty) {
+          const bannerDoc = bannersSnapshot.docs[0]
+          setBanner({
+            id: bannerDoc.id,
+            ...bannerDoc.data()
+          })
+        }
+
+        // Update stats
+        setStats({
+          totalStudents: studentsData.length,
+          totalClasses: classesData.length,
+          totalAssignments: 0, // You can fetch this if needed
+          totalAnnouncements: 0, // You can fetch this if needed
+          classes: classesData.length,
+          students: studentsData.length,
+          assignments: 0,
+          events: 0
+        })
+
+      } catch (error) {
+        console.error("Error fetching teacher data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTeacherData()
+  }, [router])
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Teacher Portal</h1>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <LogOut className="h-5 w-5" />
-              </Button>
-            </div>
+    <div className="space-y-6">
+      {/* Welcome Banner */}
+      {banner && (
+        <div className="relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/10 to-primary/5 p-6">
+          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="relative z-10">
+            <h2 className="text-2xl font-bold mb-2">Hello, {teacherData?.fullName || teacherData?.name}</h2>
+            <p className="text-gray-600">{banner.description}</p>
           </div>
+          {banner.imageUrl && (
+            <img
+              src={banner.imageUrl}
+              alt={banner.title}
+              className="absolute right-0 bottom-0 w-1/3 h-full object-cover opacity-20"
+            />
+          )}
         </div>
-      </header>
+      )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Welcome Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Welcome, Mrs. Sarah Smith</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">Mathematics Teacher</p>
-            <p className="text-gray-600">Department: Science</p>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">3</p>
-                <p className="text-sm text-gray-600">Classes Today</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">5</p>
-                <p className="text-sm text-gray-600">Pending Tasks</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Today's Classes */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Today's Classes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {classes.map((classItem, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{classItem.name}</p>
-                    <p className="text-sm text-gray-600">{classItem.subject}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{classItem.students} students</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Classes</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <BookOpen className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Assignment Submitted</p>
-                  <p className="text-sm text-gray-600">10th Grade A - 28/35 students</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <Calendar className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Attendance Marked</p>
-                  <p className="text-sm text-gray-600">11th Grade A - 95% present</p>
-                </div>
-              </div>
-            </div>
+            <div className="text-2xl font-bold">{stats.classes}</div>
+            <p className="text-xs text-muted-foreground">Active classes</p>
           </CardContent>
         </Card>
-      </main>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Students</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.students}</div>
+            <p className="text-xs text-muted-foreground">Total students</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assignments</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.assignments}</div>
+            <p className="text-xs text-muted-foreground">Pending assignments</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Events</CardTitle>
+            <Bell className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.events}</div>
+            <p className="text-xs text-muted-foreground">Upcoming events</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Classes and Students Tabs */}
+      <Tabs defaultValue="classes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="classes">Classes</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="classes" className="space-y-4">
+          {classes.map((classData) => (
+            <Card key={classData.id}>
+              <CardHeader>
+                <CardTitle>{classData.name}</CardTitle>
+                <CardDescription>
+                  {classData.description || `Class ${classData.name}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Students</span>
+                    <span className="font-medium">
+                      {students.filter(s => s.classId === classData.id).length}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Schedule</span>
+                    <span className="font-medium">{classData.schedule || 'Not set'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="students" className="space-y-4">
+          {students.map((student) => (
+            <Card key={student.id}>
+              <CardHeader>
+                <CardTitle>{student.name}</CardTitle>
+                <CardDescription>
+                  Class: {classes.find(c => c.id === student.classId)?.name || 'Unknown'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Roll Number</span>
+                    <span className="font-medium">{student.rollNumber}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Username</span>
+                    <span className="font-medium">{student.username}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

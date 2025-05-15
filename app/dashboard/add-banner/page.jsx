@@ -329,8 +329,11 @@ export default function AddBannerPage() {
         tags: tag.trim() ? [tag.trim()] : [],
         buttonText: buttonText.trim(),
         buttonLink: buttonLink.trim(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        status: 'active',
+        startDate: new Date().toISOString(), // Set start date to now
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Set end date to 30 days from now
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
 
       // Add extracted colors to banner data if available

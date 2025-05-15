@@ -1,96 +1,336 @@
 "use client"
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, BookOpen, MessageSquare, User, Bell, LogOut } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { BookOpen, Calendar, FileText, MessageSquare, Users, GraduationCap, Bell } from "lucide-react"
 
-export default function StudentHome() {
-  const [activeTab, setActiveTab] = useState("home")
+export default function StudentDashboard() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [studentData, setStudentData] = useState(null)
+  const [classData, setClassData] = useState(null)
+  const [teachers, setTeachers] = useState([])
+  const [assignments, setAssignments] = useState([])
+  const [banner, setBanner] = useState(null)
+  const [stats, setStats] = useState({
+    totalAssignments: 0,
+    totalTeachers: 0,
+    attendancePercentage: 0,
+    upcomingExams: 0,
+    assignments: 0,
+    attendance: 0,
+    grades: 0,
+    events: 0
+  })
+
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        // Get user data from localStorage
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/student/login')
+          return
+        }
+
+        const { schoolId, id: studentId } = userData
+
+        // Fetch student data
+        const studentDoc = await getDoc(doc(db, 'schools', schoolId, 'students', studentId))
+        if (studentDoc.exists()) {
+          setStudentData(studentDoc.data())
+
+          // Fetch student's class
+          const classDoc = await getDoc(doc(db, 'schools', schoolId, 'classes', studentDoc.data().classId))
+          if (classDoc.exists()) {
+            setClassData(classDoc.data())
+          }
+
+          // Fetch teachers in student's class
+          const teachersQuery = query(
+            collection(db, 'schools', schoolId, 'teachers'),
+            where('classId', 'array-contains', studentDoc.data().classId)
+          )
+          const teachersSnapshot = await getDocs(teachersQuery)
+          const teachersData = teachersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          setTeachers(teachersData)
+
+          // Fetch student's assignments
+          const assignmentsQuery = query(
+            collection(db, 'schools', schoolId, 'assignments'),
+            where('classId', '==', studentDoc.data().classId)
+          )
+          const assignmentsSnapshot = await getDocs(assignmentsQuery)
+          const assignmentsData = assignmentsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          setAssignments(assignmentsData)
+
+          // Fetch active banner - Updated query
+          try {
+            const now = new Date().toISOString()
+            const bannersQuery = query(
+              collection(db, 'schools', schoolId, 'banners'),
+              where('status', '==', 'active'),
+              orderBy('createdAt', 'desc'),
+              limit(1)
+            )
+            const bannersSnapshot = await getDocs(bannersQuery)
+            if (!bannersSnapshot.empty) {
+              const bannerDoc = bannersSnapshot.docs[0]
+              const bannerData = bannerDoc.data()
+
+              // Check dates in memory instead of in query
+              const startDate = new Date(bannerData.startDate)
+              const endDate = new Date(bannerData.endDate)
+              const currentDate = new Date()
+
+              if (currentDate >= startDate && currentDate <= endDate) {
+                setBanner({
+                  id: bannerDoc.id,
+                  title: bannerData.title,
+                  description: bannerData.description,
+                  type: bannerData.type,
+                  url: bannerData.url,
+                  tags: bannerData.tags || [],
+                  buttonText: bannerData.buttonText,
+                  buttonLink: bannerData.buttonLink,
+                  createdAt: bannerData.createdAt,
+                  updatedAt: bannerData.updatedAt
+                })
+              }
+            }
+          } catch (bannerError) {
+            console.error("Error fetching banner:", bannerError)
+          }
+
+          // Update stats
+          setStats({
+            totalAssignments: assignmentsData.length,
+            totalTeachers: teachersData.length,
+            attendancePercentage: 0,
+            upcomingExams: 0,
+            assignments: assignmentsData.length,
+            attendance: 0,
+            grades: 0,
+            events: 0
+          })
+        }
+
+      } catch (error) {
+        console.error("Error fetching student data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStudentData()
+  }, [router])
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Student Portal</h1>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <LogOut className="h-5 w-5" />
-              </Button>
+    <div className="container mx-auto p-6">
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Welcome back, {studentData?.name}</h1>
+        <p className="text-muted-foreground">Here's what's happening today</p>
+      </div>
+
+      {/* School Banner */}
+      {banner && (
+        <div className="relative rounded-xl overflow-hidden bg-gradient-to-r from-primary/10 to-primary/5 p-6 mb-8 shadow-lg">
+          <div className="absolute inset-0 bg-black/5"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">{banner.title}</h2>
+              {banner.tags && banner.tags.length > 0 && (
+                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                  {banner.tags[0]}
+                </span>
+              )}
             </div>
+            <p className="text-gray-600 mb-4">{banner.description}</p>
+            {banner.buttonText && banner.buttonLink && (
+              <a
+                href={banner.buttonLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                {banner.buttonText}
+              </a>
+            )}
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Welcome Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Welcome, John Doe</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">Class: 10th Grade A</p>
-            <p className="text-gray-600">Roll Number: 101</p>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">95%</p>
-                <p className="text-sm text-gray-600">Attendance</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-primary">3</p>
-                <p className="text-sm text-gray-600">Pending Assignments</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="bg-blue-100 p-2 rounded-full">
-                  <BookOpen className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium">New Assignment Posted</p>
-                  <p className="text-sm text-gray-600">Mathematics - Due in 2 days</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <Calendar className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium">Attendance Marked</p>
-                  <p className="text-sm text-gray-600">Present in all classes today</p>
-                </div>
-              </div>
+          {banner.url && (
+            <div className="absolute right-0 bottom-0 w-1/3 h-full">
+              {banner.type === 'video' ? (
+                <video
+                  src={banner.url}
+                  className="w-full h-full object-cover opacity-20"
+                  autoPlay
+                  muted
+                  loop
+                />
+              ) : (
+                <img
+                  src={banner.url}
+                  alt={banner.title}
+                  className="w-full h-full object-cover opacity-20"
+                />
+              )}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assignments</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.assignments}</div>
+            <p className="text-xs text-muted-foreground">Pending assignments</p>
           </CardContent>
         </Card>
-      </main>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Teachers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalTeachers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Attendance</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.attendance}%</div>
+            <p className="text-xs text-muted-foreground">Current attendance</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Grades</CardTitle>
+            <GraduationCap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.grades}</div>
+            <p className="text-xs text-muted-foreground">Average grade</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming Exams</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.upcomingExams}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Events</CardTitle>
+            <Bell className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.events}</div>
+            <p className="text-xs text-muted-foreground">Upcoming events</p>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* Class Info and Assignments Tabs */}
+      <Tabs defaultValue="class" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="class">Class Info</TabsTrigger>
+          <TabsTrigger value="assignments">Assignments</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="class" className="space-y-4">
+          {/* Class Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{classData?.name}</CardTitle>
+              <CardDescription>
+                {classData?.description || `Class ${classData?.name}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Schedule</span>
+                  <span className="font-medium">{classData?.schedule || 'Not set'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Room</span>
+                  <span className="font-medium">{classData?.room || 'Not set'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Teachers List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Teachers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {teachers.map((teacher) => (
+                  <div key={teacher.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div>
+                      <p className="font-medium">{teacher.fullName || teacher.name}</p>
+                      <p className="text-sm text-muted-foreground">{teacher.subjects?.join(', ') || 'No subjects assigned'}</p>
+                    </div>
+                    <div className="text-sm text-muted-foreground">{teacher.email}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="assignments" className="space-y-4">
+          {assignments.map((assignment) => (
+            <Card key={assignment.id}>
+              <CardHeader>
+                <CardTitle>{assignment.title}</CardTitle>
+                <CardDescription>
+                  Due: {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Subject</span>
+                    <span className="font-medium">{assignment.subject}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <span className="font-medium">{assignment.status || 'Not submitted'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

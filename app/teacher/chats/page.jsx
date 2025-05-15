@@ -1,74 +1,160 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, onSnapshot } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 import { MessageSquare, Send, Search, Users } from "lucide-react"
 
 export default function TeacherChats() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
   const [selectedChat, setSelectedChat] = useState(null)
   const [message, setMessage] = useState("")
-  const [chats] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      role: "Class 10-A Student",
-      lastMessage: "Can you help me with the math problem?",
-      time: "10:30 AM",
-      unread: 1,
-      avatar: "/avatars/student1.jpg",
-    },
-    {
-      id: 2,
-      name: "Class 10-A",
-      role: "Class Group",
-      lastMessage: "Ms. Johnson: Don't forget to submit your assignments",
-      time: "Yesterday",
-      unread: 0,
-      avatar: "/avatars/class1.jpg",
-    },
-    {
-      id: 3,
-      name: "Ms. Johnson",
-      role: "Physics Teacher",
-      lastMessage: "Let's discuss the upcoming test",
-      time: "2 days ago",
-      unread: 0,
-      avatar: "/avatars/teacher2.jpg",
-    },
-  ])
+  const [chats, setChats] = useState([])
+  const [messages, setMessages] = useState([])
+  const [students, setStudents] = useState([])
+  const [teachers, setTeachers] = useState([])
 
-  const [messages] = useState([
-    {
-      id: 1,
-      sender: "John Doe",
-      content: "Hello! I need help with the math assignment",
-      time: "10:00 AM",
-      isStudent: true,
-    },
-    {
-      id: 2,
-      sender: "You",
-      content: "Hi John! What's the problem?",
-      time: "10:05 AM",
-      isStudent: false,
-    },
-    {
-      id: 3,
-      sender: "John Doe",
-      content: "I'm stuck on question 5",
-      time: "10:10 AM",
-      isStudent: true,
-    },
-  ])
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/teacher/login')
+          return
+        }
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // TODO: Implement message sending logic
-      console.log("Sending message:", message)
-      setMessage("")
+        const { schoolId, id: teacherId } = userData
+
+        // Fetch teacher's classes
+        const classesQuery = query(
+          collection(db, 'schools', schoolId, 'classes'),
+          where('teachers', 'array-contains', teacherId)
+        )
+        const classesSnapshot = await getDocs(classesQuery)
+        const classesData = classesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+
+        // Fetch students in teacher's classes
+        const classIds = classesData.map(c => c.id)
+        const studentsQuery = query(
+          collection(db, 'schools', schoolId, 'students'),
+          where('classId', 'in', classIds)
+        )
+        const studentsSnapshot = await getDocs(studentsQuery)
+        const studentsData = studentsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          type: 'student'
+        }))
+        setStudents(studentsData)
+
+        // Fetch other teachers
+        const teachersQuery = query(
+          collection(db, 'schools', schoolId, 'teachers'),
+          where('id', '!=', teacherId)
+        )
+        const teachersSnapshot = await getDocs(teachersQuery)
+        const teachersData = teachersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          type: 'teacher'
+        }))
+        setTeachers(teachersData)
+
+        // Combine students and teachers into chats
+        const allChats = [
+          ...studentsData.map(student => ({
+            id: student.id,
+            name: student.name,
+            role: `${student.classId} Student`,
+            lastMessage: "",
+            time: "",
+            unread: 0,
+            avatar: "/avatars/student.jpg",
+            type: 'student'
+          })),
+          ...teachersData.map(teacher => ({
+            id: teacher.id,
+            name: teacher.fullName || teacher.name,
+            role: `${teacher.subjects?.join(', ') || 'Teacher'}`,
+            lastMessage: "",
+            time: "",
+            unread: 0,
+            avatar: "/avatars/teacher.jpg",
+            type: 'teacher'
+          }))
+        ]
+        setChats(allChats)
+
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchData()
+  }, [router])
+
+  useEffect(() => {
+    if (!selectedChat) return
+
+    const userData = JSON.parse(localStorage.getItem('user'))
+    const { schoolId, id: teacherId } = userData
+
+    // Subscribe to messages
+    const messagesQuery = query(
+      collection(db, 'schools', schoolId, 'messages'),
+      where('participants', 'array-contains', selectedChat.id),
+      orderBy('timestamp', 'asc')
+    )
+
+    const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      const messagesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setMessages(messagesData)
+    })
+
+    return () => unsubscribe()
+  }, [selectedChat])
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !selectedChat) return
+
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'))
+      const { schoolId, id: teacherId } = userData
+
+      const messageData = {
+        content: message,
+        senderId: teacherId,
+        senderName: userData.fullName || userData.name,
+        senderType: 'teacher',
+        receiverId: selectedChat.id,
+        receiverType: selectedChat.type,
+        timestamp: new Date().toISOString(),
+        participants: [teacherId, selectedChat.id]
+      }
+
+      await addDoc(collection(db, 'schools', schoolId, 'messages'), messageData)
+      setMessage("")
+
+    } catch (error) {
+      console.error("Error sending message:", error)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
   return (
@@ -78,10 +164,6 @@ export default function TeacherChats() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Chats</CardTitle>
-            <Button variant="outline" size="sm">
-              <Users className="h-4 w-4 mr-2" />
-              New Group
-            </Button>
           </div>
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
@@ -139,12 +221,6 @@ export default function TeacherChats() {
                     <p className="text-sm text-gray-500">{selectedChat.role}</p>
                   </div>
                 </div>
-                {selectedChat.role.includes("Group") && (
-                  <Button variant="outline" size="sm">
-                    <Users className="h-4 w-4 mr-2" />
-                    Manage Group
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -153,22 +229,22 @@ export default function TeacherChats() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.isStudent ? "justify-start" : "justify-end"}`}
+                  className={`flex ${msg.senderType === 'teacher' ? "justify-end" : "justify-start"}`}
                 >
                   <div
                     className={`max-w-[70%] rounded-lg p-3 ${
-                      msg.isStudent
-                        ? "bg-gray-100 text-gray-900"
-                        : "bg-primary text-white"
+                      msg.senderType === 'teacher'
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-900"
                     }`}
                   >
                     <div className="text-sm">{msg.content}</div>
                     <div
                       className={`text-xs mt-1 ${
-                        msg.isStudent ? "text-gray-500" : "text-primary-foreground/70"
+                        msg.senderType === 'teacher' ? "text-primary-foreground/70" : "text-gray-500"
                       }`}
                     >
-                      {msg.time}
+                      {new Date(msg.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                 </div>

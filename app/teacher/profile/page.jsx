@@ -1,10 +1,13 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 import {
   User,
   Mail,
@@ -18,26 +21,77 @@ import {
 } from "lucide-react"
 
 export default function TeacherProfile() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState({
-    name: "Mr. Smith",
-    email: "smith@school.com",
-    phone: "+1 234 567 890",
-    employeeId: "TCH2024001",
-    subjects: ["Mathematics", "Physics"],
-    classes: ["Class 10-A", "Class 11-B"],
-    joinDate: "2024-01-15",
-    qualifications: "M.Sc. in Mathematics, B.Ed.",
-    experience: "5 years",
-    avatar: "/avatars/teacher1.jpg",
-  })
+  const [profile, setProfile] = useState(null)
+  const [editedProfile, setEditedProfile] = useState(null)
+  const [classes, setClasses] = useState([])
 
-  const [editedProfile, setEditedProfile] = useState(profile)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/teacher/login')
+          return
+        }
 
-  const handleSave = () => {
-    // TODO: Implement profile update logic
-    setProfile(editedProfile)
-    setIsEditing(false)
+        const { schoolId, id: teacherId } = userData
+
+        // Fetch teacher profile
+        const teacherDoc = await getDoc(doc(db, 'schools', schoolId, 'teachers', teacherId))
+        if (teacherDoc.exists()) {
+          const teacherData = teacherDoc.data()
+          setProfile(teacherData)
+          setEditedProfile(teacherData)
+        }
+
+        // Fetch teacher's classes
+        const classesQuery = query(
+          collection(db, 'schools', schoolId, 'classes'),
+          where('teachers', 'array-contains', teacherId)
+        )
+        const classesSnapshot = await getDocs(classesQuery)
+        const classesData = classesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        setClasses(classesData)
+
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [router])
+
+  const handleSave = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'))
+      const { schoolId, id: teacherId } = userData
+
+      // Update teacher profile in Firestore
+      await updateDoc(doc(db, 'schools', schoolId, 'teachers', teacherId), editedProfile)
+
+      // Update local state
+      setProfile(editedProfile)
+      setIsEditing(false)
+
+    } catch (error) {
+      console.error("Error updating profile:", error)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
+
+  if (!profile) {
+    return <div>Profile not found</div>
   }
 
   return (
@@ -72,24 +126,24 @@ export default function TeacherProfile() {
             <div className="flex flex-col items-center space-y-4">
               <Avatar className="h-24 w-24">
                 <AvatarImage src={profile.avatar} />
-                <AvatarFallback className="text-2xl">{profile.name[0]}</AvatarFallback>
+                <AvatarFallback className="text-2xl">{profile.fullName?.[0] || profile.name?.[0]}</AvatarFallback>
               </Avatar>
               <div className="text-center">
-                <h3 className="text-xl font-semibold">{profile.name}</h3>
+                <h3 className="text-xl font-semibold">{profile.fullName || profile.name}</h3>
                 <p className="text-sm text-gray-500">{profile.employeeId}</p>
               </div>
               <div className="w-full space-y-2">
                 <div className="flex items-center text-sm text-gray-600">
                   <BookOpen className="h-4 w-4 mr-2" />
-                  {profile.subjects.join(", ")}
+                  {profile.subjects?.join(", ") || 'No subjects assigned'}
                 </div>
                 <div className="flex items-center text-sm text-gray-600">
                   <GraduationCap className="h-4 w-4 mr-2" />
-                  {profile.classes.join(", ")}
+                  {classes.map(c => c.name).join(", ") || 'No classes assigned'}
                 </div>
                 <div className="flex items-center text-sm text-gray-600">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Joined: {profile.joinDate}
+                  Joined: {new Date(profile.joinDate).toLocaleDateString()}
                 </div>
               </div>
             </div>
@@ -107,15 +161,15 @@ export default function TeacherProfile() {
                 <label className="text-sm font-medium">Full Name</label>
                 {isEditing ? (
                   <Input
-                    value={editedProfile.name}
+                    value={editedProfile.fullName || editedProfile.name}
                     onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, name: e.target.value })
+                      setEditedProfile({ ...editedProfile, fullName: e.target.value })
                     }
                   />
                 ) : (
                   <div className="flex items-center mt-1 text-gray-600">
                     <User className="h-4 w-4 mr-2" />
-                    {profile.name}
+                    {profile.fullName || profile.name}
                   </div>
                 )}
               </div>

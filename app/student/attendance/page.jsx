@@ -1,23 +1,90 @@
 "use client"
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Calendar } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { Calendar, Check, X, Clock } from "lucide-react"
 
 export default function StudentAttendance() {
-  const [attendance] = useState({
-    present: 85,
-    absent: 10,
-    late: 5,
-    total: 100,
-    records: [
-      { date: "2024-03-20", status: "present" },
-      { date: "2024-03-19", status: "present" },
-      { date: "2024-03-18", status: "absent" },
-      { date: "2024-03-17", status: "present" },
-      { date: "2024-03-16", status: "late" },
-    ],
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [attendance, setAttendance] = useState([])
+  const [stats, setStats] = useState({
+    totalDays: 0,
+    present: 0,
+    absent: 0,
+    late: 0,
+    percentage: 0
   })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/student/login')
+          return
+        }
+
+        const { schoolId, id: studentId } = userData
+
+        // Fetch student's class
+        const studentDoc = await getDoc(doc(db, 'schools', schoolId, 'students', studentId))
+        if (!studentDoc.exists()) return
+
+        const classId = studentDoc.data().classId
+
+        // Fetch attendance records
+        const attendanceQuery = query(
+          collection(db, 'schools', schoolId, 'attendance'),
+          where('classId', '==', classId)
+        )
+        const attendanceSnapshot = await getDocs(attendanceQuery)
+        const attendanceData = attendanceSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+
+        // Get student's attendance records
+        const studentAttendance = attendanceData.map(record => {
+          const studentRecord = record.records.find(r => r.studentId === studentId)
+          return {
+            date: record.date,
+            status: studentRecord?.status || 'absent'
+          }
+        })
+
+        setAttendance(studentAttendance)
+
+        // Calculate stats
+        const totalDays = studentAttendance.length
+        const present = studentAttendance.filter(a => a.status === 'present').length
+        const absent = studentAttendance.filter(a => a.status === 'absent').length
+        const late = studentAttendance.filter(a => a.status === 'late').length
+        const percentage = totalDays > 0 ? Math.round((present / totalDays) * 100) : 0
+
+        setStats({
+          totalDays,
+          present,
+          absent,
+          late,
+          percentage
+        })
+
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [router])
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
 
   return (
     <div className="space-y-6">
@@ -26,61 +93,84 @@ export default function StudentAttendance() {
         <h2 className="text-2xl font-bold">Attendance</h2>
       </div>
 
-      {/* Attendance Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Overall Attendance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Attendance Rate</span>
-              <span className="text-sm font-medium">{attendance.present}%</span>
-            </div>
-            <Progress value={attendance.present} className="h-2" />
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{attendance.present}%</div>
-                <div className="text-sm text-gray-600">Present</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{attendance.absent}%</div>
-                <div className="text-sm text-gray-600">Absent</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{attendance.late}%</div>
-                <div className="text-sm text-gray-600">Late</div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Days</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalDays}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Present</CardTitle>
+            <Check className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.present}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Absent</CardTitle>
+            <X className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.absent}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Late</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.late}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Recent Records */}
+      {/* Attendance Records */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Records</CardTitle>
+          <CardTitle>Attendance Records</CardTitle>
+          <CardDescription>
+            Overall Attendance: {stats.percentage}%
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {attendance.records.map((record, index) => (
+            {attendance.map((record, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
               >
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      record.status === "present"
-                        ? "bg-green-500"
-                        : record.status === "absent"
-                        ? "bg-red-500"
-                        : "bg-yellow-500"
-                    }`}
-                  />
-                  <span className="capitalize">{record.status}</span>
+                <div className="flex items-center space-x-4">
+                  <div className={`p-2 rounded-full ${
+                    record.status === 'present' ? 'bg-green-100' :
+                    record.status === 'absent' ? 'bg-red-100' :
+                    'bg-yellow-100'
+                  }`}>
+                    {record.status === 'present' ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : record.status === 'absent' ? (
+                      <X className="h-4 w-4 text-red-600" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-medium">
+                      {new Date(record.date).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm text-gray-600">{record.date}</span>
               </div>
             ))}
           </div>

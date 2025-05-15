@@ -1,29 +1,111 @@
 "use client"
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, Mail, Phone, GraduationCap, Calendar, Edit2, Save } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { User, Mail, Phone, MapPin, GraduationCap, Calendar } from "lucide-react"
 
 export default function StudentProfile() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@school.com",
-    phone: "+1 234 567 890",
-    rollNumber: "STU2024001",
-    class: "Class 10-A",
-    joinDate: "2024-01-15",
-    avatar: "/avatars/student1.jpg",
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    rollNumber: "",
+    class: "",
+    dateOfBirth: ""
   })
 
-  const [editedProfile, setEditedProfile] = useState(profile)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem('user'))
+        if (!userData) {
+          router.push('/auth/student/login')
+          return
+        }
 
-  const handleSave = () => {
-    // TODO: Implement profile update logic
-    setProfile(editedProfile)
-    setIsEditing(false)
+        const { schoolId, id: studentId } = userData
+
+        // Fetch student profile
+        const studentDoc = await getDoc(doc(db, 'schools', schoolId, 'students', studentId))
+        if (!studentDoc.exists()) {
+          router.push('/auth/student/login')
+          return
+        }
+
+        const studentData = studentDoc.data()
+        setProfile(studentData)
+        setFormData({
+          name: studentData.name || "",
+          email: studentData.email || "",
+          phone: studentData.phone || "",
+          address: studentData.address || "",
+          rollNumber: studentData.rollNumber || "",
+          class: studentData.class || "",
+          dateOfBirth: studentData.dateOfBirth || ""
+        })
+
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [router])
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'))
+      const { schoolId, id: studentId } = userData
+
+      await updateDoc(doc(db, 'schools', schoolId, 'students', studentId), formData)
+      setProfile(formData)
+      setIsEditing(false)
+
+    } catch (error) {
+      console.error("Error updating profile:", error)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Profile Not Found</h2>
+          <p className="mt-2 text-gray-600">Unable to load your profile. Please try again later.</p>
+          <Button
+            className="mt-4"
+            onClick={() => router.push('/auth/student/login')}
+          >
+            Return to Login
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -34,121 +116,147 @@ export default function StudentProfile() {
           <h2 className="text-2xl font-bold">Profile</h2>
         </div>
         <Button
-          variant={isEditing ? "default" : "outline"}
-          onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+          variant={isEditing ? "outline" : "default"}
+          onClick={() => setIsEditing(!isEditing)}
         >
-          {isEditing ? (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          ) : (
-            <>
-              <Edit2 className="h-4 w-4 mr-2" />
-              Edit Profile
-            </>
-          )}
+          {isEditing ? "Cancel" : "Edit Profile"}
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Overview */}
-        <Card className="md:col-span-1">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-4">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profile.avatar} />
-                <AvatarFallback className="text-2xl">{profile.name[0]}</AvatarFallback>
-              </Avatar>
-              <div className="text-center">
-                <h3 className="text-xl font-semibold">{profile.name}</h3>
-                <p className="text-sm text-gray-500">{profile.rollNumber}</p>
-              </div>
-              <div className="w-full space-y-2">
-                <div className="flex items-center text-sm text-gray-600">
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  {profile.class}
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Joined: {profile.joinDate}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Profile Details */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Full Name</label>
-                {isEditing ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>Personal Information</CardTitle>
+          <CardDescription>
+            Your personal details and academic information
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isEditing ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
                   <Input
-                    value={editedProfile.name}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, name: e.target.value })
-                    }
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
                   />
-                ) : (
-                  <div className="flex items-center mt-1 text-gray-600">
-                    <User className="h-4 w-4 mr-2" />
-                    {profile.name}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Email Address</label>
-                {isEditing ? (
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
+                    id="email"
+                    name="email"
                     type="email"
-                    value={editedProfile.email}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, email: e.target.value })
-                    }
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email"
                   />
-                ) : (
-                  <div className="flex items-center mt-1 text-gray-600">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {profile.email}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Phone Number</label>
-                {isEditing ? (
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
                   <Input
-                    type="tel"
-                    value={editedProfile.phone}
-                    onChange={(e) =>
-                      setEditedProfile({ ...editedProfile, phone: e.target.value })
-                    }
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="Enter your phone number"
                   />
-                ) : (
-                  <div className="flex items-center mt-1 text-gray-600">
-                    <Phone className="h-4 w-4 mr-2" />
-                    {profile.phone}
-                  </div>
-                )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Enter your address"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rollNumber">Roll Number</Label>
+                  <Input
+                    id="rollNumber"
+                    name="rollNumber"
+                    value={formData.rollNumber}
+                    onChange={handleInputChange}
+                    placeholder="Enter your roll number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="class">Class</Label>
+                  <Input
+                    id="class"
+                    name="class"
+                    value={formData.class}
+                    onChange={handleInputChange}
+                    placeholder="Enter your class"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
-
-              <div>
-                <label className="text-sm font-medium">Roll Number</label>
-                <div className="flex items-center mt-1 text-gray-600">
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  {profile.rollNumber}
+              <div className="flex justify-end">
+                <Button type="submit">Save Changes</Button>
+              </div>
+            </form>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Name:</span>
+                  <span className="font-medium">{profile.name || 'Not set'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Mail className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Email:</span>
+                  <span className="font-medium">{profile.email || 'Not set'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Phone:</span>
+                  <span className="font-medium">{profile.phone || 'Not set'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Address:</span>
+                  <span className="font-medium">{profile.address || 'Not set'}</span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Roll Number:</span>
+                  <span className="font-medium">{profile.rollNumber || 'Not set'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Class:</span>
+                  <span className="font-medium">{profile.class || 'Not set'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">Date of Birth:</span>
+                  <span className="font-medium">
+                    {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not set'}
+                  </span>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

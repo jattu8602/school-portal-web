@@ -132,7 +132,7 @@ export default function DashboardHome() {
       {
         id: "1",
         type: "image",
-        url: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+        url: "https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=2938&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         title: "Welcome to Our School",
         description: "Providing quality education since 1995",
         tags: ["Announcement"],
@@ -143,7 +143,7 @@ export default function DashboardHome() {
       {
         id: "2",
         type: "image",
-        url: "https://res.cloudinary.com/demo/image/upload/w_1000,ar_16:9,c_fill,g_auto,e_sharpen/v1547634631/samples/landscapes/architecture-signs.jpg",
+        url: "https://images.unsplash.com/photo-1671706466693-28fb04684694?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8c2Nob29sJTIwc3BvcnR8ZW58MHx8MHx8fDA%3D",
         title: "Annual Sports Day",
         description: "Join us on December 15th for our annual sports event",
         tags: ["Event"],
@@ -154,7 +154,7 @@ export default function DashboardHome() {
       {
         id: "3",
         type: "image",
-        url: "https://res.cloudinary.com/demo/image/upload/w_1000,ar_16:9,c_fill,g_auto,e_sharpen/v1547634631/samples/landscapes/nature-mountains.jpg",
+        url: "https://images.unsplash.com/photo-1705727210721-961cc64a6895?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHNjaG9vbCUyMHNjaWVuY2UlMjBsYWJ8ZW58MHx8MHx8fDA%3D",
         title: "New Science Lab",
         description: "Explore our newly renovated science laboratory",
         tags: ["Facility"],

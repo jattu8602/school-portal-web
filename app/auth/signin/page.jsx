@@ -119,16 +119,16 @@ export default function SignInPage() {
                 Password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <input
+              <input
                   type={showPassword ? "text" : "password"}
-                  id="password"
-                  name="password"
-                  placeholder="Enter your password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                required
+                value={formData.password}
+                onChange={handleChange}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 pr-10"
-                />
+              />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
