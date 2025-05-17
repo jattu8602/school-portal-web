@@ -6,6 +6,8 @@ import { auth, db } from '../../../lib/firebase'
 import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, orderBy, where } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
+import { useToast } from '../../context/ToastContext'
+import TeacherManagement from '../../components/dashboard/TeacherManagement'
 
 export default function TeachersPage() {
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false)
@@ -15,6 +17,7 @@ export default function TeachersPage() {
   const [user, setUser] = useState(null)
   const [selectedTeacher, setSelectedTeacher] = useState(null)
   const router = useRouter()
+  const { showToast } = useToast()
 
   // Form state for adding a teacher
   const [teacherFormData, setTeacherFormData] = useState({
@@ -67,6 +70,7 @@ export default function TeachersPage() {
       setTeachers(teachersData)
     } catch (err) {
       console.error('Error fetching teachers:', err)
+      showToast('Failed to fetch teachers', 'error')
     }
   }
 
@@ -306,9 +310,10 @@ export default function TeachersPage() {
     try {
       await deleteDoc(doc(db, 'schools', user.uid, 'teachers', teacherId))
       fetchTeachers(user.uid)
+      showToast('Teacher deleted successfully', 'success')
     } catch (err) {
       console.error('Error deleting teacher:', err)
-      alert('Failed to delete teacher: ' + err.message)
+      showToast('Failed to delete teacher', 'error')
     }
   }
 
@@ -358,210 +363,15 @@ export default function TeachersPage() {
 
       {/* Add Teacher Modal */}
       {showAddTeacherModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
-          <div className="bg-white rounded-lg w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Add New Teacher</h3>
-              <button
-                onClick={() => setShowAddTeacherModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitTeacher}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={teacherFormData.fullName}
-                    onChange={handleTeacherFormChange}
-                    placeholder="Enter teacher's full name"
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={teacherFormData.email}
-                    onChange={handleTeacherFormChange}
-                    placeholder="Enter teacher's email"
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={teacherFormData.phone}
-                    onChange={handleTeacherFormChange}
-                    placeholder="Enter teacher's phone number"
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="subject"
-                    value={teacherFormData.subject}
-                    onChange={handleTeacherFormChange}
-                    placeholder="Enter primary subject taught"
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Qualification
-                  </label>
-                  <input
-                    type="text"
-                    name="qualification"
-                    value={teacherFormData.qualification}
-                    onChange={handleTeacherFormChange}
-                    placeholder="Enter teacher's qualification"
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Gender <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="gender"
-                    value={teacherFormData.gender}
-                    onChange={handleTeacherFormChange}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                {/* Class-Subject Mapping Section */}
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium text-gray-800 mb-3">Subjects Taught in Classes</h4>
-
-                  {/* Add subject-class mapping */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Class
-                      </label>
-                      <select
-                        name="classId"
-                        value={selectedClassSubject.classId}
-                        onChange={handleSubjectClassChange}
-                        className="w-full px-3 py-2 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        <option value="">Select a class</option>
-                        {classes.map((classItem) => (
-                          <option key={classItem.id} value={classItem.id}>
-                            {classItem.name} {classItem.section}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Subject Taught
-                      </label>
-                      <div className="flex">
-                        <input
-                          type="text"
-                          name="subjectName"
-                          value={selectedClassSubject.subjectName}
-                          onChange={handleSubjectClassChange}
-                          placeholder="Subject for this class"
-                          className="flex-1 px-3 py-2 border rounded-l-md focus:ring-primary-500 focus:border-primary-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={addSubjectToList}
-                          className="bg-primary-600 text-white px-3 py-2 rounded-r-md hover:bg-primary-700"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Display added subject-class mappings */}
-                  {teacherFormData.subjects.length > 0 && (
-                    <div className="mt-3 border rounded-md overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                            <th scope="col" className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {teacherFormData.subjects.map((subject, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-2 text-sm">{subject.className}</td>
-                              <td className="px-4 py-2 text-sm">{subject.subjectName}</td>
-                              <td className="px-4 py-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => removeSubjectFromList(index)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddTeacherModal(false)}
-                  className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                >
-                  <Save className="h-4 w-4 mr-2 inline" />
-                  Save Teacher
-                </button>
-              </div>
-            </form>
-          </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <TeacherManagement
+            schoolId={user.uid}
+            onClose={() => setShowAddTeacherModal(false)}
+            onSuccess={(count) => {
+              showToast(`Added ${count} teachers successfully`, 'success')
+              fetchTeachers(user.uid)
+            }}
+          />
         </div>
       )}
 
