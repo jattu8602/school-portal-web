@@ -110,24 +110,12 @@ export default function LandingPage() {
                   Go to Dashboard
                 </Link>
               ) : (
-                <>
+                  <>
                   <Link
-                    href="/auth/student/login"
-                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
-                  >
-                    Student Login
-                  </Link>
-                  <Link
-                    href="/auth/teacher/login"
-                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
-                  >
-                    Teacher Login
-                  </Link>
-                  <Link
-                    href="/auth/signup"
+                    href="/auth/signin"
                     className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                   >
-                    Register School
+                    School Login
                   </Link>
                 </>
               )}
@@ -157,14 +145,14 @@ export default function LandingPage() {
                 </>
               ) : (
                 <>
-                  <Link href="/auth/signup">
+                  <Link href="/auth/student/login">
                     <Button size="lg" className="text-lg w-full sm:w-auto">
-                      Get Started
+                      Student Login
                     </Button>
                   </Link>
-                  <Link href="/about">
+                  <Link href="/auth/teacher/login">
                     <Button size="lg" variant="outline" className="text-lg w-full sm:w-auto">
-                      Learn More
+                      Teacher Login
                     </Button>
                   </Link>
                   <PermanentInstallButton size="lg" className="text-lg w-full sm:w-auto bg-black hover:bg-gray-800 text-white" />

@@ -7,6 +7,7 @@ import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, serverTimestamp, q
 import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import { useToast } from '../../context/ToastContext'
+import StudentManagement from '../../components/dashboard/StudentManagement'
 
 export default function ClassesPage() {
   const [showAddClassModal, setShowAddClassModal] = useState(false)
@@ -378,6 +379,28 @@ export default function ClassesPage() {
     }
   }
 
+  const handleStudentsAdded = async (successCount, maleCount, femaleCount) => {
+    try {
+      if (!user || !selectedClass) return;
+
+      // Update class stats
+      const classRef = doc(db, 'schools', user.uid, 'classes', selectedClass.id);
+      await setDoc(classRef, {
+        totalStudents: (selectedClass.totalStudents || 0) + successCount,
+        boys: (selectedClass.boys || 0) + maleCount,
+        girls: (selectedClass.girls || 0) + femaleCount,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      // Refresh classes list
+      await fetchClasses(user.uid);
+      showToast(`Added ${successCount} students successfully`, 'success');
+    } catch (err) {
+      console.error('Error updating class stats:', err);
+      showToast('Failed to update class statistics', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -538,118 +561,11 @@ export default function ClassesPage() {
       {/* Add Students Modal */}
       {showAddStudentsModal && selectedClass && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Add Students to {selectedClass.name} {selectedClass.section}</h3>
-              <button
-                onClick={() => setShowAddStudentsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitStudents}>
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Add multiple students at once. Passwords will be generated automatically.</p>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">Roll No</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {studentFormData.students.map((student, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              value={student.rollNo}
-                              onChange={(e) => handleStudentChange(index, 'rollNo', e.target.value)}
-                              className="w-16 px-2 py-1 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                              min="1"
-                              required
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="text"
-                              value={student.name}
-                              onChange={(e) => handleStudentChange(index, 'name', e.target.value)}
-                              className="w-full px-2 py-1 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Student name"
-                              required
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <input
-                              type="text"
-                              value={student.username}
-                              onChange={(e) => handleStudentChange(index, 'username', e.target.value)}
-                              className="w-full px-2 py-1 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Auto-generated if empty"
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            <select
-                              value={student.gender}
-                              onChange={(e) => handleStudentChange(index, 'gender', e.target.value)}
-                              className="w-full px-2 py-1 border rounded-md focus:ring-primary-500 focus:border-primary-500"
-                            >
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </td>
-                          <td className="px-4 py-2">
-                            <button
-                              type="button"
-                              onClick={() => removeStudentRow(index)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Remove student"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addStudentRow}
-                  className="mt-4 flex items-center text-primary-600 hover:text-primary-700"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add Another Student
-                </button>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudentsModal(false)}
-                  className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                >
-                  <Save className="h-4 w-4 mr-2 inline" />
-                  Save Students
-                </button>
-              </div>
-            </form>
-          </div>
+          <StudentManagement
+            classData={selectedClass}
+            onClose={() => setShowAddStudentsModal(false)}
+            onSuccess={handleStudentsAdded}
+          />
         </div>
       )}
     </div>
@@ -890,6 +806,24 @@ function ClassCard({ classData, onAddStudents, onDelete }) {
       alert('Failed to remove teacher from class: ' + err.message);
       setLoading(false);
     }
+  };
+
+  const handleAddStudents = () => {
+    setShowAddStudentsModal(true);
+  };
+
+  const handleStudentsAdded = (successCount, maleCount, femaleCount) => {
+    // Update class stats
+    const classRef = doc(db, 'schools', auth.currentUser.uid, 'classes', classData.id);
+    setDoc(classRef, {
+      totalStudents: (classData.totalStudents || 0) + successCount,
+      boys: (classData.boys || 0) + maleCount,
+      girls: (classData.girls || 0) + femaleCount,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // Refresh students list
+    fetchStudents();
   };
 
   return (
