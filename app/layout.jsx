@@ -2,6 +2,7 @@ import { Inter } from "next/font/google"
 import "@/app/globals.css"
 import PWAInstaller from './components/PWAInstaller'
 import Script from "next/script"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -36,6 +37,7 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         {children}
         <PWAInstaller />
+        <Toaster />
         <Script
           id="register-service-worker"
           strategy="afterInteractive"
