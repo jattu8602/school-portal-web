@@ -134,10 +134,17 @@ export default function AttendanceTracker() {
 
   useEffect(() => {
     setMounted(true)
-    // Auto-select the only school and go to class selection
+    // Auto-select the only school and first class
     if (schools.length === 1) {
-      setSelectedSchool(schools[0])
-      setStep("class")
+      const school = schools[0]
+      setSelectedSchool(school)
+      if (school.classes.length > 0) {
+        const firstClass = school.classes[0]
+        setSelectedClass({ ...firstClass })
+        setStep("attendance")
+      } else {
+        setStep("class")
+      }
     }
   }, [])
 
