@@ -8,7 +8,15 @@ import { auth, db } from '../../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { ToastProvider } from '../../app/context/ToastContext'
 import { Bell, Menu, X, User, ChevronDown } from 'lucide-react'
-import { getDoc, doc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'
+import {
+  getDoc,
+  doc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+} from 'firebase/firestore'
 import { SearchBar } from '../components/ui/search-bar'
 
 export default function DashboardLayout({ children }) {
@@ -25,14 +33,14 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+      setIsMobile(window.innerWidth < 768)
+    }
 
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
+    checkIfMobile()
+    window.addEventListener('resize', checkIfMobile)
 
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
+    return () => window.removeEventListener('resize', checkIfMobile)
+  }, [])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -57,7 +65,12 @@ export default function DashboardLayout({ children }) {
       }
 
       // Fetch notifications
-      const notificationsRef = collection(db, 'schools', schoolId, 'notifications')
+      const notificationsRef = collection(
+        db,
+        'schools',
+        schoolId,
+        'notifications'
+      )
       const q = query(notificationsRef, where('status', '==', 'unread'))
       const snapshot = await getDocs(q)
       setUnreadNotifications(snapshot.size)
@@ -76,13 +89,23 @@ export default function DashboardLayout({ children }) {
     const handleClickOutside = (event) => {
       // Close profile dropdown if click is outside
       const profileElement = document.getElementById('profile-dropdown')
-      if (profileDropdownOpen && profileElement && !profileElement.contains(event.target)) {
+      if (
+        profileDropdownOpen &&
+        profileElement &&
+        !profileElement.contains(event.target)
+      ) {
         setProfileDropdownOpen(false)
       }
 
       // Close notifications dropdown if click is outside
-      const notificationsElement = document.getElementById('notifications-dropdown')
-      if (notificationsOpen && notificationsElement && !notificationsElement.contains(event.target)) {
+      const notificationsElement = document.getElementById(
+        'notifications-dropdown'
+      )
+      if (
+        notificationsOpen &&
+        notificationsElement &&
+        !notificationsElement.contains(event.target)
+      ) {
         setNotificationsOpen(false)
       }
     }
@@ -107,6 +130,7 @@ export default function DashboardLayout({ children }) {
       icon: '💳',
     },
     { name: 'About PresentSir', href: '/dashboard/about', icon: 'ℹ️' },
+    { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
   ]
 
   const notifications = [
@@ -140,7 +164,9 @@ export default function DashboardLayout({ children }) {
         <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50 h-16">
           <div className="flex items-center px-2 md:px-4 h-full">
             {/* Left section with menu toggle and logo */}
-            <div className={`flex items-center ${isMobile ? 'w-auto' : 'w-1/4'}`}>
+            <div
+              className={`flex items-center ${isMobile ? 'w-auto' : 'w-1/4'}`}
+            >
               <button
                 className="md:hidden mr-2 text-gray-500 hover:text-gray-700"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -155,12 +181,14 @@ export default function DashboardLayout({ children }) {
                     alt="Present Sir Logo"
                     className="h-full w-full object-contain rounded-md"
                     onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/32?text=PS";
+                      e.target.onerror = null
+                      e.target.src = 'https://via.placeholder.com/32?text=PS'
                     }}
                   />
                 </div>
-                <span className="ml-2 text-lg font-bold tracking-wide uppercase hidden md:block">Present Sir</span>
+                <span className="ml-2 text-lg font-bold tracking-wide uppercase hidden md:block">
+                  Present Sir
+                </span>
               </div>
             </div>
 
@@ -170,7 +198,11 @@ export default function DashboardLayout({ children }) {
             </div>
 
             {/* Right section with notifications and profile */}
-            <div className={`flex items-center justify-end space-x-2 md:space-x-4 ${isMobile ? 'ml-1' : 'w-1/4'}`}>
+            <div
+              className={`flex items-center justify-end space-x-2 md:space-x-4 ${
+                isMobile ? 'ml-1' : 'w-1/4'
+              }`}
+            >
               {/* Notifications */}
               <div className="relative" id="notifications-dropdown">
                 <button
@@ -199,8 +231,8 @@ export default function DashboardLayout({ children }) {
                         alt={schoolInfo.name}
                         className="h-full w-full object-cover"
                         onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://via.placeholder.com/32?text=S";
+                          e.target.onerror = null
+                          e.target.src = 'https://via.placeholder.com/32?text=S'
                         }}
                       />
                     ) : (
@@ -208,7 +240,7 @@ export default function DashboardLayout({ children }) {
                     )}
                   </div>
                   <span className="text-sm font-medium hidden md:block text-gray-800">
-                    {schoolInfo?.name || user?.email?.split('@')[0] || "School"}
+                    {schoolInfo?.name || user?.email?.split('@')[0] || 'School'}
                   </span>
                   <ChevronDown size={14} className="hidden md:block" />
                 </button>
@@ -217,15 +249,23 @@ export default function DashboardLayout({ children }) {
                 {profileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-20">
                     <div className="py-1">
-                      <Link href="/dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Link
+                        href="/dashboard/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
                         Your Profile
                       </Link>
-                      <Link href="/dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Link
+                        href="/dashboard/settings"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
                         Settings
                       </Link>
                       <div className="border-t border-gray-100"></div>
                       <button
-                        onClick={() => auth.signOut().then(() => router.push('/auth/signin'))}
+                        onClick={() =>
+                          auth.signOut().then(() => router.push('/auth/signin'))
+                        }
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Logout
@@ -240,14 +280,16 @@ export default function DashboardLayout({ children }) {
 
         {/* Sidebar - Hidden on mobile unless toggled */}
         <aside
-          className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform transform z-50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+          className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform transform z-50 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
           style={{ top: '64px', height: 'calc(100vh - 64px)' }}
         >
           <div className="flex flex-col h-full">
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto py-4">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href
                 return (
                   <Link
                     key={item.name}
@@ -261,19 +303,42 @@ export default function DashboardLayout({ children }) {
                     <span className="mr-3 w-5 text-center">{item.icon}</span>
                     <span className="text-sm">{item.name}</span>
                   </Link>
-                );
+                )
               })}
             </nav>
 
             {/* School Info */}
-            <div className="border-t p-4 border-gray-200">
-              <div className="text-xs text-gray-500 mb-1">Logged in as:</div>
-              <div className="text-sm font-medium text-gray-800">
-                {schoolInfo?.name || "School Account"}
-              </div>
-              <div className="text-xs text-gray-500">
-                {schoolInfo?.email || user?.email || ""}
-              </div>
+            <div className="border-t border-white">
+              <button
+                onClick={() =>
+                  auth.signOut().then(() => router.push('/auth/signin'))
+                }
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                <div
+                  id="nav-logout"
+                  className="inline-block bg-red-600 text-white font-bold px-3 py-1 rounded"
+                  >
+                  ⏻ Logout
+                </div>
+              </button>
+
+              <Link
+                href="/dashboard/profile"
+                className="block px-4 py-2 text-sm text-gray-700 "
+              >
+                <div className="border-t p-4 border-gray-200 hover:bg-gray-100">
+                  <div className="text-xs text-gray-500 mb-1">
+                    Logged in as:
+                  </div>
+                  <div className="text-sm font-medium text-gray-800">
+                    {schoolInfo?.name || 'School Account'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {schoolInfo?.email || user?.email || ''}
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
         </aside>
