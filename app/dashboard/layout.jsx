@@ -8,6 +8,7 @@ import { auth, db } from '../../lib/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { ToastProvider } from '../../app/context/ToastContext'
 import { Bell, Menu, X, User, ChevronDown } from 'lucide-react'
+import { FaArrowRightFromBracket } from 'react-icons/fa6'
 import {
   getDoc,
   doc,
@@ -308,26 +309,67 @@ export default function DashboardLayout({ children }) {
             </nav>
 
             {/* School Info */}
-            <div className="border-t border-white">
+            <div className="border-t border-b border-gray-200">
               <button
                 onClick={() =>
                   auth.signOut().then(() => router.push('/auth/signin'))
                 }
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                className="w-full text-left p-2"
               >
                 <div
                   id="nav-logout"
-                  className="inline-block bg-red-600 text-white font-bold px-3 py-1 rounded"
-                  >
-                  ⏻ Logout
+                  className="flex items-center justify-between bg-white text-white rounded-xl p-2 hover:bg-gray-50"
+                >
+                  {/* Left side: icon + text */}
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-[#fef2f2] p-3 rounded-lg">
+                      {/* you can swap this SVG for whatever logout icon you like */}
+                      <svg
+                        className="w-6 h-6 text-red-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <path d="M16 17l5-5-5-5" />
+                        <path d="M21 12H9" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-red-500 font-bold">Logout</div>
+                      <div className="text-gray-400 text-xs">
+                        Sign out of your account
+                      </div>
+                    </div>
+                  </div>
+                  {/* Right side: chevron */}
+                  <div className="text-gray-500">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
                 </div>
               </button>
 
               <Link
                 href="/dashboard/profile"
-                className="block px-4 py-2 text-sm text-gray-700 "
+                className="block border-t border-gray-200 px-2 py-2 text-sm text-gray-700 "
               >
-                <div className="border-t p-4 border-gray-200 hover:bg-gray-100">
+                <div className=" p-2 rounded-xl hover:bg-gray-50">
                   <div className="text-xs text-gray-500 mb-1">
                     Logged in as:
                   </div>
