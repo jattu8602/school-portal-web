@@ -67,20 +67,7 @@ const SAMPLE_HISTORICAL_DATA = {
         Hindi: { marks: 88, maxMarks: 100 }
       }
     },
-    {
-      studentId: "student5",
-      name: "Samuel Johnson",
-      rollNo: 5,
-      previousClass: "Class 4",
-      previousYear: "2022-2023",
-      subjects: {
-        Mathematics: { marks: 45, maxMarks: 100 },
-        Science: { marks: 55, maxMarks: 100 },
-        English: { marks: 62, maxMarks: 100 },
-        "Social Studies": { marks: 58, maxMarks: 100 },
-        Hindi: { marks: 50, maxMarks: 100 }
-      }
-    }
+    
   ],
 };
 
