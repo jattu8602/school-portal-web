@@ -82,36 +82,6 @@ const SAMPLE_HISTORICAL_DATA = {
       }
     }
   ],
-  "class6B_2023": [
-    {
-      studentId: "student6",
-      name: "Rahul Kumar",
-      rollNo: 1,
-      previousClass: "Class 5",
-      previousYear: "2022-2023",
-      subjects: {
-        Mathematics: { marks: 82, maxMarks: 100 },
-        Science: { marks: 88, maxMarks: 100 },
-        English: { marks: 75, maxMarks: 100 },
-        "Social Studies": { marks: 90, maxMarks: 100 },
-        Hindi: { marks: 85, maxMarks: 100 }
-      }
-    },
-    {
-      studentId: "student7",
-      name: "Aisha Khan",
-      rollNo: 2,
-      previousClass: "Class 5",
-      previousYear: "2022-2023",
-      subjects: {
-        Mathematics: { marks: 95, maxMarks: 100 },
-        Science: { marks: 92, maxMarks: 100 },
-        English: { marks: 88, maxMarks: 100 },
-        "Social Studies": { marks: 85, maxMarks: 100 },
-        Hindi: { marks: 90, maxMarks: 100 }
-      }
-    }
-  ]
 };
 
 export default function MarksDetailsPage() {
