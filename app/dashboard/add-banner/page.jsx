@@ -429,7 +429,7 @@ export default function AddBannerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
+      <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center">
