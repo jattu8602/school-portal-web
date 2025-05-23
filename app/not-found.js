@@ -82,8 +82,7 @@ export default function NotFound() {
                   <h2 className="text-xl font-semibold text-white mb-4">Quick Navigation</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
-                      { href: "/auth/login", icon: <LogIn className="w-4 h-4" />, label: "Login" },
-                      { href: "/auth/register", icon: <UserPlus className="w-4 h-4" />, label: "Register" },
+                     
                       { href: "/help", icon: <HelpCircle className="w-4 h-4" />, label: "Help Center" },
                       { href: "/team", icon: <Users className="w-4 h-4" />, label: "Our Team" },
                     ].map((link, index) => (
