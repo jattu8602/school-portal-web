@@ -13,7 +13,7 @@ export default function Footer() {
       <span className="sr-only">Instagram</span>
       <FaInstagram className="h-6 w-6" />
     </Link>
-    <Link href="www.linkedin.com/in/present-sir-99624634a" target="_blank" className="text-muted-foreground hover:text-primary">
+    <Link href="https://www.linkedin.com/in/present-sir-99624634a" target="_blank" className="text-muted-foreground hover:text-primary">
       <span className="sr-only">LinkedIn</span>
       <FaLinkedin className="h-6 w-6" />
     </Link>
