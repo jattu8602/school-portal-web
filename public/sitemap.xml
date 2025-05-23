@@ -33,5 +33,65 @@
   <priority>0.64</priority>
 </url>
 
+<url>
+  <loc>https://www.presentsir.in/about</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/contact-sales</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/cookie-policy</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.50</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/dashboard</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.85</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/help</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/privacy-policy</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/request-demo</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.75</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/student</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/teacher</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/team</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.65</priority>
+</url>
+<url>
+  <loc>https://www.presentsir.in/terms-of-service</loc>
+  <lastmod>2025-05-21T19:00:11+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+
+
+
+
+
 
 </urlset>
