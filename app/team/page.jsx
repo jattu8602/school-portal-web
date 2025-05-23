@@ -26,12 +26,8 @@ export default function TeamPage() {
             We're always looking for talented individuals passionate about education and technology.
             If you're interested in making a difference in how schools operate, we'd love to hear from you.
           </p>
-          <Link
-            href="/careers"
-            className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            View Open Positions
-          </Link>
+          
+
         </div>
       </div>
     </div>
