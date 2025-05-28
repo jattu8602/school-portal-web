@@ -74,7 +74,11 @@ body {
   }
 }
 
-
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
 
 @layer base {
   * {
@@ -83,4 +87,11 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+
+
+/* styles/globals.css or your global stylesheet */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
