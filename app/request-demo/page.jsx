@@ -30,6 +30,8 @@ import {
   Globe,
   HeadphonesIcon,
 } from 'lucide-react'
+import LazySection from '@/app/components/LazySection'
+import PerformanceMonitor from '@/app/components/PerformanceMonitor'
 
 // Floating attendance icons with better positioning
 function FloatingAttendanceIcons() {
@@ -318,6 +320,7 @@ function DemoStats() {
 export default function RequestDemo() {
   return (
     <div className="min-h-screen bg-white text-black relative">
+      <PerformanceMonitor />
       <FloatingAttendanceIcons />
 
       <div className="relative z-10 container mx-auto px-4 sm:px-6 max-w-7xl py-8 md:py-16">
@@ -353,15 +356,15 @@ export default function RequestDemo() {
           </div>
         </section>
 
-        {/* Demo Preview Section */}
-        <section className="container px-4 sm:px-6 pb-8 md:pb-16">
+        {/* Demo Preview Section - Lazy loaded */}
+        <LazySection className="container px-4 sm:px-6 pb-8 md:pb-16">
           <div className="flex justify-center mb-12 md:mb-16">
             <DemoPreview />
           </div>
-        </section>
+        </LazySection>
 
-        {/* Features Section */}
-        <section className="container px-4 sm:px-6 pb-8 md:pb-16">
+        {/* Features Section - Lazy loaded */}
+        <LazySection className="container px-4 sm:px-6 pb-8 md:pb-16">
           <div className="text-center mb-8 md:mb-12">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4">
               Why Choose PresentSir?
@@ -372,15 +375,15 @@ export default function RequestDemo() {
             </p>
           </div>
           <FeatureCards />
-        </section>
+        </LazySection>
 
-        {/* Stats Section */}
-        <section className="container px-4 sm:px-6 pb-8 md:pb-16">
+        {/* Stats Section - Lazy loaded */}
+        <LazySection className="container px-4 sm:px-6 pb-8 md:pb-16">
           <DemoStats />
-        </section>
+        </LazySection>
 
-        {/* Main Content Section */}
-        <section className="container px-4 sm:px-6 pb-8 md:pb-16">
+        {/* Main Content Section - Lazy loaded */}
+        <LazySection className="container px-4 sm:px-6 pb-8 md:pb-16">
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Left Column - Demo Benefits */}
             <div className="space-y-6 md:space-y-8">
@@ -444,7 +447,7 @@ export default function RequestDemo() {
                       <Input
                         id="first-name"
                         placeholder="John"
-                        className="bg-white border-gray-300 text-black h-11 md:h-12"
+                        className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                         required
                       />
                     </div>
@@ -458,7 +461,7 @@ export default function RequestDemo() {
                       <Input
                         id="last-name"
                         placeholder="Smith"
-                        className="bg-white border-gray-300 text-black h-11 md:h-12"
+                        className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                         required
                       />
                     </div>
@@ -475,7 +478,7 @@ export default function RequestDemo() {
                       id="email"
                       type="email"
                       placeholder="john.smith@school.edu"
-                      className="bg-white border-gray-300 text-black h-11 md:h-12"
+                      className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                       required
                     />
                   </div>
@@ -491,7 +494,7 @@ export default function RequestDemo() {
                       id="phone"
                       type="tel"
                       placeholder="+91 1234567890"
-                      className="bg-white border-gray-300 text-black h-11 md:h-12"
+                      className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                       required
                     />
                   </div>
@@ -506,7 +509,7 @@ export default function RequestDemo() {
                     <Input
                       id="institution"
                       placeholder="ABC School"
-                      className="bg-white border-gray-300 text-black h-11 md:h-12"
+                      className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                       required
                     />
                   </div>
@@ -522,7 +525,7 @@ export default function RequestDemo() {
                       <Select>
                         <SelectTrigger
                           id="role"
-                          className="bg-white border-gray-300 text-black h-11 md:h-12"
+                          className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                         >
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
@@ -548,7 +551,7 @@ export default function RequestDemo() {
                       <Select>
                         <SelectTrigger
                           id="institution-size"
-                          className="bg-white border-gray-300 text-black h-11 md:h-12"
+                          className="bg-white border-gray-300 text-black h-12 md:h-12 min-h-[48px] touch-manipulation"
                         >
                           <SelectValue placeholder="Select size" />
                         </SelectTrigger>
@@ -584,13 +587,13 @@ export default function RequestDemo() {
                       id="message"
                       placeholder="Describe your current attendance challenges and what you'd like to see in the demo..."
                       rows={4}
-                      className="bg-white border-gray-300 text-black h-11 md:h-12"
+                      className="bg-white border-gray-300 text-black min-h-[96px] touch-manipulation"
                     />
                   </div>
 
                   <Button
                     type="submit"
-                    className="w-full bg-black text-white hover:bg-gray-800 h-12 md:h-14 text-base md:text-lg font-semibold group"
+                    className="w-full bg-black text-white hover:bg-gray-800 h-12 md:h-14 text-base md:text-lg font-semibold group min-h-[48px] touch-manipulation"
                   >
                     Request Demo
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -601,14 +604,14 @@ export default function RequestDemo() {
                       By submitting this form, you agree to our{' '}
                       <Link
                         href="/privacy-policy"
-                        className="text-black hover:underline font-medium"
+                        className="text-black hover:underline font-medium inline-block min-h-[44px] py-1 touch-manipulation"
                       >
                         Privacy Policy
                       </Link>{' '}
                       and{' '}
                       <Link
                         href="/terms-of-service"
-                        className="text-black hover:underline font-medium"
+                        className="text-black hover:underline font-medium inline-block min-h-[44px] py-1 touch-manipulation"
                       >
                         Terms of Service
                       </Link>
@@ -622,7 +625,7 @@ export default function RequestDemo() {
               </CardContent>
             </Card>
           </div>
-        </section>
+        </LazySection>
       </div>
 
       <style jsx>{`

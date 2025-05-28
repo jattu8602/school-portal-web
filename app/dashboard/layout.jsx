@@ -177,10 +177,14 @@ export default function DashboardLayout({ children }) {
 
               <div className="flex-shrink-0 flex items-center">
                 <div className="h-8 w-8 relative hidden md:block">
-                  <img
+                  <Image
                     src="/present_sir_day-logo.jpg"
                     alt="Present Sir Logo"
+                    width={32}
+                    height={32}
                     className="h-full w-full object-contain rounded-md"
+                    priority={true}
+                    quality={85}
                     onError={(e) => {
                       e.target.onerror = null
                       e.target.src = 'https://via.placeholder.com/32?text=PS'

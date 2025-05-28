@@ -1,49 +1,50 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import { ChevronLeft, ChevronRight, Play, Pause, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import PropTypes from "prop-types"
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, Play, Pause, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import PropTypes from 'prop-types'
+import Image from 'next/image'
 
 // Helper function to extract dominant colors from video frames
 const extractColors = (videoElement, canvas, callback) => {
-  if (!videoElement || !canvas) return;
+  if (!videoElement || !canvas) return
 
-  const context = canvas.getContext('2d');
-  if (!context) return;
+  const context = canvas.getContext('2d')
+  if (!context) return
 
   // Draw the current video frame to the canvas
-  context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+  context.drawImage(videoElement, 0, 0, canvas.width, canvas.height)
 
   // Sample more points for better color extraction
   const regions = [
-    {x: 0, y: 0}, // top-left
-    {x: canvas.width - 1, y: 0}, // top-right
-    {x: 0, y: canvas.height - 1}, // bottom-left
-    {x: canvas.width - 1, y: canvas.height - 1}, // bottom-right
-    {x: Math.floor(canvas.width / 2), y: Math.floor(canvas.height / 2)}, // center
-    {x: Math.floor(canvas.width / 4), y: Math.floor(canvas.height / 2)}, // middle left
-    {x: Math.floor(3 * canvas.width / 4), y: Math.floor(canvas.height / 2)}, // middle right
-    {x: Math.floor(canvas.width / 2), y: Math.floor(canvas.height / 4)}, // upper middle
-    {x: Math.floor(canvas.width / 2), y: Math.floor(3 * canvas.height / 4)}, // lower middle
-  ];
+    { x: 0, y: 0 }, // top-left
+    { x: canvas.width - 1, y: 0 }, // top-right
+    { x: 0, y: canvas.height - 1 }, // bottom-left
+    { x: canvas.width - 1, y: canvas.height - 1 }, // bottom-right
+    { x: Math.floor(canvas.width / 2), y: Math.floor(canvas.height / 2) }, // center
+    { x: Math.floor(canvas.width / 4), y: Math.floor(canvas.height / 2) }, // middle left
+    { x: Math.floor((3 * canvas.width) / 4), y: Math.floor(canvas.height / 2) }, // middle right
+    { x: Math.floor(canvas.width / 2), y: Math.floor(canvas.height / 4) }, // upper middle
+    { x: Math.floor(canvas.width / 2), y: Math.floor((3 * canvas.height) / 4) }, // lower middle
+  ]
 
   // Get raw colors
-  const rawColors = regions.map(({x, y}) => {
-    const pixel = context.getImageData(x, y, 1, 1).data;
-    return {r: pixel[0], g: pixel[1], b: pixel[2]};
-  });
+  const rawColors = regions.map(({ x, y }) => {
+    const pixel = context.getImageData(x, y, 1, 1).data
+    return { r: pixel[0], g: pixel[1], b: pixel[2] }
+  })
 
   // Sort colors by vibrancy (sum of RGB values) and take the most vibrant ones
   const vibrantColors = [...rawColors]
-    .sort((a, b) => (b.r + b.g + b.b) - (a.r + a.g + a.b))
+    .sort((a, b) => b.r + b.g + b.b - (a.r + a.g + a.b))
     .slice(0, 5)
-    .map(color => `rgb(${color.r}, ${color.g}, ${color.b})`);
+    .map((color) => `rgb(${color.r}, ${color.g}, ${color.b})`)
 
   // Pass extracted colors to callback
-  callback(vibrantColors);
-};
+  callback(vibrantColors)
+}
 
 /**
  * Banner slideshow component for displaying school banners with improved aspect ratio handling
@@ -63,24 +64,26 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
   const containerRef = useRef(null)
 
   const goToNext = () => {
-    if (transitioning) return;
-    setTransitioning(true);
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length);
-    setTimeout(() => setTransitioning(false), 1200);
+    if (transitioning) return
+    setTransitioning(true)
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % banners.length)
+    setTimeout(() => setTransitioning(false), 1200)
   }
 
   const goToPrevious = () => {
-    if (transitioning) return;
-    setTransitioning(true);
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + banners.length) % banners.length);
-    setTimeout(() => setTransitioning(false), 1200);
+    if (transitioning) return
+    setTransitioning(true)
+    setCurrentIndex(
+      (prevIndex) => (prevIndex - 1 + banners.length) % banners.length
+    )
+    setTimeout(() => setTransitioning(false), 1200)
   }
 
   const goToSlide = (index) => {
-    if (transitioning || index === currentIndex) return;
-    setTransitioning(true);
-    setCurrentIndex(index);
-    setTimeout(() => setTransitioning(false), 1200);
+    if (transitioning || index === currentIndex) return
+    setTransitioning(true)
+    setCurrentIndex(index)
+    setTimeout(() => setTransitioning(false), 1200)
   }
 
   const togglePlayPause = () => {
@@ -92,7 +95,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
     // Initialize loading states for all videos
     const initialLoadState = {}
     banners.forEach((banner, index) => {
-      if (banner.type === "video") {
+      if (banner.type === 'video') {
         initialLoadState[index] = false
       }
     })
@@ -111,21 +114,21 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         setVideoColors(JSON.parse(cachedColors))
       }
     } catch (error) {
-      console.error("Error retrieving cached videos:", error)
+      console.error('Error retrieving cached videos:', error)
     }
 
     // Create canvas for color extraction
     if (!canvasRef.current) {
-      canvasRef.current = document.createElement('canvas');
-      canvasRef.current.width = 64;  // small size is enough for color sampling
-      canvasRef.current.height = 36;
+      canvasRef.current = document.createElement('canvas')
+      canvasRef.current.width = 64 // small size is enough for color sampling
+      canvasRef.current.height = 36
     }
 
     return () => {
       if (colorExtractionTimerRef.current) {
-        clearInterval(colorExtractionTimerRef.current);
+        clearInterval(colorExtractionTimerRef.current)
       }
-    };
+    }
   }, [banners])
 
   // Handle slideshow autoplay
@@ -146,25 +149,25 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
   // Pause slideshow autoplay when hovering
   useEffect(() => {
     if (isHovering && intervalRef.current) {
-      clearInterval(intervalRef.current);
+      clearInterval(intervalRef.current)
     } else if (!isHovering && isPlaying) {
-      intervalRef.current = setInterval(goToNext, 5000);
+      intervalRef.current = setInterval(goToNext, 5000)
     }
 
     return () => {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearInterval(intervalRef.current)
       }
-    };
-  }, [isHovering, isPlaying]);
+    }
+  }, [isHovering, isPlaying])
 
   // Handle video playback when slide changes
   useEffect(() => {
     // Don't change video playback state during a transition
-    if (transitioning) return;
+    if (transitioning) return
 
     // Pause all videos
-    Object.keys(videoRefs.current).forEach(index => {
+    Object.keys(videoRefs.current).forEach((index) => {
       const videoElement = videoRefs.current[index]
       if (videoElement && !videoElement.paused) {
         videoElement.pause()
@@ -173,58 +176,66 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
     // Play the current video if it's a video slide
     const currentBanner = banners[currentIndex]
-    if (currentBanner && currentBanner.type === "video") {
+    if (currentBanner && currentBanner.type === 'video') {
       const videoElement = videoRefs.current[currentIndex]
       if (videoElement) {
         // Set a small timeout to ensure DOM is ready
         setTimeout(() => {
-          if (videoElement.readyState >= 2) { // Make sure video is ready to play
+          if (videoElement.readyState >= 2) {
+            // Make sure video is ready to play
             const playPromise = videoElement.play()
             if (playPromise !== undefined) {
-              playPromise.catch(error => {
-                console.error("Error playing video:", error)
+              playPromise.catch((error) => {
+                console.error('Error playing video:', error)
               })
             }
           }
 
           // Start extracting colors periodically
           if (colorExtractionTimerRef.current) {
-            clearInterval(colorExtractionTimerRef.current);
+            clearInterval(colorExtractionTimerRef.current)
           }
 
           colorExtractionTimerRef.current = setInterval(() => {
             extractColors(videoElement, canvasRef.current, (colors) => {
-              const newColors = {...videoColors};
-              newColors[currentBanner.url] = colors;
-              setVideoColors(newColors);
+              const newColors = { ...videoColors }
+              newColors[currentBanner.url] = colors
+              setVideoColors(newColors)
 
               // Cache the colors locally
               try {
-                localStorage.setItem('cachedVideoColors', JSON.stringify(newColors));
+                localStorage.setItem(
+                  'cachedVideoColors',
+                  JSON.stringify(newColors)
+                )
               } catch (error) {
-                console.error("Error caching video colors:", error);
+                console.error('Error caching video colors:', error)
               }
 
               // If the banner doesn't already have colors stored or we have a color update handler, update in Firebase
-              if (onColorsExtracted && (!currentBanner.extractedColors || !arraysEqual(currentBanner.extractedColors, colors))) {
-                onColorsExtracted(currentBanner.id, colors);
+              if (
+                onColorsExtracted &&
+                (!currentBanner.extractedColors ||
+                  !arraysEqual(currentBanner.extractedColors, colors))
+              ) {
+                onColorsExtracted(currentBanner.id, colors)
               }
-            });
-          }, 1000); // Extract colors every second
+            })
+          }, 1000) // Extract colors every second
         }, 50)
       }
     }
 
     return () => {
       if (colorExtractionTimerRef.current) {
-        clearInterval(colorExtractionTimerRef.current);
+        clearInterval(colorExtractionTimerRef.current)
       }
-    };
+    }
   }, [currentIndex, banners, videoColors, onColorsExtracted, transitioning])
 
   // Cache video URLs when they're successfully loaded
   const handleVideoLoad = (index, url) => {
-    setVideoLoaded(prev => ({ ...prev, [index]: true }))
+    setVideoLoaded((prev) => ({ ...prev, [index]: true }))
 
     // Cache the video URL in localStorage
     try {
@@ -232,7 +243,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
       setCachedVideos(updatedCache)
       localStorage.setItem('cachedBannerVideos', JSON.stringify(updatedCache))
     } catch (error) {
-      console.error("Error caching video:", error)
+      console.error('Error caching video:', error)
     }
   }
 
@@ -240,40 +251,46 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-gray-100 dark:bg-gray-800 text-center p-6 rounded-lg">
         <div className="text-4xl mb-4">📷</div>
-        <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">No Banners Yet</h3>
+        <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+          No Banners Yet
+        </h3>
         <p className="text-gray-500 dark:text-gray-400 max-w-md">
-          Add your first banner to showcase important announcements to teachers and students in the mobile app.
+          Add your first banner to showcase important announcements to teachers
+          and students in the mobile app.
         </p>
       </div>
     )
   }
 
   // Get current banner's colors for gradient
-  const currentBanner = banners[currentIndex];
-  const currentUrl = currentBanner?.url || '';
+  const currentBanner = banners[currentIndex]
+  const currentUrl = currentBanner?.url || ''
 
   // First check if the banner already has extractedColors stored from Firebase
-  let currentColors = [];
-  if (currentBanner?.extractedColors && currentBanner.extractedColors.length > 0) {
-    currentColors = currentBanner.extractedColors;
+  let currentColors = []
+  if (
+    currentBanner?.extractedColors &&
+    currentBanner.extractedColors.length > 0
+  ) {
+    currentColors = currentBanner.extractedColors
   } else {
     // Fall back to colors from localStorage if not available in the banner object
-    currentColors = videoColors[currentUrl] || [];
+    currentColors = videoColors[currentUrl] || []
   }
 
   // Generate a gradient style based on extracted colors
-  const gradientStyle = {};
+  const gradientStyle = {}
   if (currentBanner?.type === 'video' && currentColors.length > 0) {
     // Create a more vibrant gradient using extracted colors
-    const [color1, color2, color3] = currentColors;
+    const [color1, color2, color3] = currentColors
     gradientStyle.background = `linear-gradient(to bottom,
                               transparent 0%,
                               transparent 50%,
-                              ${color1 || 'rgba(0,0,0,0.7)'} 100%)`;
-    gradientStyle.position = 'absolute';
-    gradientStyle.inset = '0';
-    gradientStyle.zIndex = '1';
-    gradientStyle.opacity = '0.8';
+                              ${color1 || 'rgba(0,0,0,0.7)'} 100%)`
+    gradientStyle.position = 'absolute'
+    gradientStyle.inset = '0'
+    gradientStyle.zIndex = '1'
+    gradientStyle.opacity = '0.8'
   }
 
   return (
@@ -289,17 +306,25 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
           <div
             key={banner.id}
             className={`absolute inset-0 transition-opacity duration-1000 ${
-              index === currentIndex ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+              index === currentIndex
+                ? 'opacity-100 z-10'
+                : 'opacity-0 pointer-events-none z-0'
             }`}
           >
-            {banner.type === "image" ? (
+            {banner.type === 'image' ? (
               <div className="relative h-full w-full">
                 {/* Image with aspect ratio preservation */}
                 <div className="absolute inset-0">
-                  <img
-                    src={banner.url || "/placeholder.svg"}
+                  <Image
+                    src={banner.url || '/placeholder.svg'}
                     alt={banner.title}
+                    fill
                     className="h-full w-full object-cover"
+                    priority={index === 0}
+                    quality={80}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    placeholder="blur"
+                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                   />
                 </div>
 
@@ -333,7 +358,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
                     {banner.buttonText && (
                       <Link
-                        href={banner.buttonLink || "#"}
+                        href={banner.buttonLink || '#'}
                         className="mt-2 inline-block bg-primary hover:bg-primary/90 text-white px-3 py-2 md:px-4 md:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors z-20 relative shadow-md"
                       >
                         {banner.buttonText}
@@ -348,22 +373,26 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
                 {!videoLoaded[index] && (
                   <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/50">
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    <span className="text-white ml-2 text-sm">Loading video...</span>
+                    <span className="text-white ml-2 text-sm">
+                      Loading video...
+                    </span>
                   </div>
                 )}
 
                 {/* Video element */}
                 <video
-                  ref={el => videoRefs.current[index] = el}
+                  ref={(el) => (videoRefs.current[index] = el)}
                   src={banner.url}
                   className="h-full w-full object-cover"
                   muted
                   loop
                   playsInline
                   preload="auto"
-                  poster={videoLoaded[index] ? undefined : "/video-placeholder.jpg"}
+                  poster={
+                    videoLoaded[index] ? undefined : '/video-placeholder.jpg'
+                  }
                   onLoadedData={() => handleVideoLoad(index, banner.url)}
-                  onError={(e) => console.error("Video error:", e)}
+                  onError={(e) => console.error('Video error:', e)}
                 />
 
                 {/* Color-adaptive gradient overlay for better text visibility */}
@@ -400,7 +429,7 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
                     {banner.buttonText && (
                       <Link
-                        href={banner.buttonLink || "#"}
+                        href={banner.buttonLink || '#'}
                         className="mt-2 inline-block bg-primary hover:bg-primary/90 text-white px-3 py-2 md:px-4 md:py-2 rounded-md text-xs sm:text-sm font-medium transition-colors z-20 relative shadow-md"
                       >
                         {banner.buttonText}
@@ -419,7 +448,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         <Button
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${transitioning ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${
+            transitioning ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           onClick={goToPrevious}
           disabled={transitioning}
         >
@@ -428,7 +459,9 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
         <Button
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${transitioning ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto transition-all shadow-md backdrop-blur-sm ${
+            transitioning ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           onClick={goToNext}
           disabled={transitioning}
         >
@@ -443,14 +476,17 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
           <Button
             variant="ghost"
             size="icon"
-            className={`h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto shadow-sm ${transitioning ? 'opacity-50' : ''}`}
+            className={`h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-black/40 text-white hover:bg-black/60 pointer-events-auto shadow-sm ${
+              transitioning ? 'opacity-50' : ''
+            }`}
             onClick={togglePlayPause}
             disabled={transitioning}
           >
-            {isPlaying ?
-              <Pause className="h-3 w-3 sm:h-4 sm:w-4" /> :
+            {isPlaying ? (
+              <Pause className="h-3 w-3 sm:h-4 sm:w-4" />
+            ) : (
               <Play className="h-3 w-3 sm:h-4 sm:w-4" />
-            }
+            )}
           </Button>
 
           {/* Dots for slides */}
@@ -460,12 +496,12 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
               onClick={() => goToSlide(index)}
               className={`h-1.5 sm:h-2 transition-all rounded-full pointer-events-auto ${
                 index === currentIndex
-                  ? "bg-white w-6 sm:w-8"
-                  : "bg-white/50 w-2 sm:w-3 hover:bg-white/70"
+                  ? 'bg-white w-6 sm:w-8'
+                  : 'bg-white/50 w-2 sm:w-3 hover:bg-white/70'
               }`}
               disabled={transitioning}
               aria-label={`Go to slide ${index + 1}`}
-              aria-current={index === currentIndex ? "true" : "false"}
+              aria-current={index === currentIndex ? 'true' : 'false'}
             />
           ))}
         </div>
@@ -476,34 +512,34 @@ export default function BannerSlideshow({ banners, onColorsExtracted }) {
 
 // Helper function to compare arrays
 function arraysEqual(a, b) {
-  if (a === b) return true;
-  if (a == null || b == null) return false;
-  if (a.length !== b.length) return false;
+  if (a === b) return true
+  if (a == null || b == null) return false
+  if (a.length !== b.length) return false
 
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
+    if (a[i] !== b[i]) return false
   }
-  return true;
+  return true
 }
 
 BannerSlideshow.propTypes = {
   banners: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
-      type: PropTypes.oneOf(["image", "video"]).isRequired,
+      type: PropTypes.oneOf(['image', 'video']).isRequired,
       url: PropTypes.string.isRequired,
       title: PropTypes.string.isRequired,
       description: PropTypes.string.isRequired,
       tags: PropTypes.arrayOf(PropTypes.string),
       buttonText: PropTypes.string,
       buttonLink: PropTypes.string,
-      extractedColors: PropTypes.array
+      extractedColors: PropTypes.array,
     })
   ).isRequired,
-  onColorsExtracted: PropTypes.func
+  onColorsExtracted: PropTypes.func,
 }
 
 // Set default props
 BannerSlideshow.defaultProps = {
-  onColorsExtracted: null
+  onColorsExtracted: null,
 }
