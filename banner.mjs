@@ -14,7 +14,7 @@ const __dirname = dirname(__filename)
 const projectName = 'PRESENTSIR'
 const version = 'v1.0.0'
 const port = 3000
-const author = '👑 Jattu The Boss 👑'
+const author = '👑 PresentSir Team 👑'
 
 // 📜 Quotes
 const quotes = [
@@ -80,7 +80,7 @@ const interval = setInterval(() => {
   console.log(
     chalk.yellowBright(`🌐 RUNNING ON:`) + ` http://localhost:${port}`
   )
-  console.log(chalk.blueBright(`🛠️  DEVELOPER:`) + ` ${author}`)
+  console.log(chalk.blueBright(`🛠️  DEVELOPERS:`) + ` ${author}`)
   console.log(
     chalk.redBright(`🕒 START TIME:`) + ` ${new Date().toLocaleString()}`
   )
