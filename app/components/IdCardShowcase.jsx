@@ -36,7 +36,7 @@ export default function IdCardShowcase() {
                       <div className="flex-shrink-0">
                         <div className="w-32 h-32 rounded-lg bg-muted overflow-hidden mx-auto">
                           <img
-                            src="https://imgs.search.brave.com/JElh90IgzzhSnvrO5uCZeUxPludtMlzSyrmKBZCgipc/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/ZnJlZXBpay5jb20v/ZnJlZS1waG90by9w/b3J0cmFpdC1oYW5k/c29tZS15b3VuZy1t/YW4td2l0aC1hcm1z/LWNyb3NzZWQtaG9s/ZGluZy13aGl0ZS1o/ZWFkcGhvbmUtYXJv/dW5kLWhpcy1uZWNr/XzIzLTIxNDgwOTY0/MzkuanBnP3NlbXQ9/YWlzX2h5YnJpZCZ3/PTc0MA"
+                            src="https://media.istockphoto.com/id/1336063208/photo/single-portrait-of-smiling-confident-male-student-teenager-looking-at-camera-in-library.webp?a=1&b=1&s=612x612&w=0&k=20&c=mhn5OF-O2KzY66AXIOHD944al_6zp6pz4AQBnw60kbA="
                             alt="Student"
                             className="w-full h-full object-cover"
                           />
@@ -150,7 +150,7 @@ export default function IdCardShowcase() {
                       <div className="flex-shrink-0">
                         <div className="w-32 h-32 rounded-lg bg-muted overflow-hidden mx-auto">
                           <img
-                            src="https://imgs.search.brave.com/eofG4dmvxhWrcG-SxKzGqIOmquH4T5nrOseBXPTpHdw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWcu/ZnJlZXBpay5jb20v/cHJlbWl1bS1waG90/by95b3VuZy1maWxp/cGluYS13aXRoLWxv/bmctYmxhY2staGFp/ci1zdHVkaW8td2hv/LWZlZWxzLWNvbmZp/ZGVudC1jcm9zc2lu/Zy1hcm1zLXdpdGgt/ZGV0ZXJtaW5hdGlv/bl8xMTg3LTQxMzUw/OS5qcGc_c2VtdD1h/aXNfaHlicmlkJnc9/NzQw"
+                            src="https://media.istockphoto.com/id/2045189569/photo/portrait-of-indian-young-woman-wearing-casual-kurta-on-white-background-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=4Xnw99ovfFgR1fMGEQoxOiIwH2V1dLpfZs0_A_QnfFA="
                             alt="Teacher"
                             className="w-full h-full object-cover"
                           />
