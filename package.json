@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node banner.mjs && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate-secret": "node scripts/generate-secret.js"
+    "generate-secret": "node scripts/generate-secret.js",
+    "optimize-images": "node scripts/optimize-images.js",
+    "analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.8",
@@ -22,8 +24,10 @@
     "@radix-ui/react-tabs": "^1.1.9",
     "@radix-ui/react-toast": "^1.2.13",
     "@stripe/stripe-js": "^7.2.0",
+    "chalk": "^4.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "figlet": "^1.8.1",
     "firebase": "^11.6.0",
     "firebase-admin": "^13.3.0",
     "framer-motion": "^10.18.0",
@@ -32,7 +36,7 @@
     "lucide-react": "^0.503.0",
     "next": "15.3.1",
     "next-auth": "^4.24.11",
-    "nodemon": "^3.1.10",
+    "ora": "^8.2.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "^7.56.1",
@@ -41,15 +45,19 @@
     "react-toastify": "^11.0.5",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
+    "web-vitals": "^5.0.1",
     "xlsx": "^0.18.5"
+
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@next/bundle-analyzer": "^15.3.2",
     "@types/react": "19.1.2",
     "autoprefixer": "^10.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "postcss": "^8.4.23",
+    "sharp": "^0.34.2",
     "tailwindcss": "^3.3.0"
   }
 }
